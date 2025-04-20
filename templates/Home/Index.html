@@ -1,0 +1,34 @@
+{% extends 'Base/Base.html' %}
+{% load tailwind_filters %}
+{% block title %}Bienvenidos{% endblock %}
+
+{% block content %}
+<div class="flex min-h-screen bg-gray-100">
+    <!-- Sidebar -->
+    <aside class="w-64 bg-white shadow-lg">
+        <div class="p-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-800">Menú</h2>
+        </div>
+        <nav class="p-4 space-y-2">
+            <a href="#" class="block text-gray-700 hover:text-blue-500">Inicio</a>
+            <a href="#" class="block text-gray-700 hover:text-blue-500">Tickets</a>
+            <a href="#" class="block text-gray-700 hover:text-blue-500">Usuarios</a>
+            <a href="#" class="block text-gray-700 hover:text-blue-500">Reportes</a>
+            <a href="#" class="block text-gray-700 hover:text-blue-500">Configuración</a>
+            <a href="{% url 'users:logout' %}" class="block text-gray-700 hover:text-blue-500">Logout</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-6">
+        <div class="bg-white rounded-lg shadow-md">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Bienvenidos</h3>
+            </div>
+            <div class="p-6">
+                <p class="text-gray-700">Bienvenido a nuestro sistema de ayuda</p>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}
