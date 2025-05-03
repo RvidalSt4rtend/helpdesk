@@ -15,8 +15,8 @@ class LoginForm(forms.Form):
             self.user = authenticate(username=username, password=password)
             if self.user is not None:
                 if not self.user.is_active:
-                    raise forms.ValidationError('This account is inactive.')
+                    raise forms.ValidationError('Cuenta Desactivada')
             else:
-                raise forms.ValidationError('Please enter a correct username and password. Note that both fields are case-sensitive.')
+                raise forms.ValidationError('Credenciales Incorrectas')
             
 

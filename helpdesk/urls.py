@@ -5,4 +5,5 @@ app_name = 'helpdesk'
 
 urlpatterns = [
     path('', index_view, name='home'),
+
 ]

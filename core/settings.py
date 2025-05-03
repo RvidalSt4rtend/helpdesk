@@ -11,6 +11,8 @@ ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(" ")
 CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in ALLOWED_HOSTS if host != 'localhost']
 
 DJANGO_APPS = [
+    'unfold',
+    'unfold.contrib.filters',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -122,3 +124,8 @@ STATIC_URL = '/staticfiles/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
+UNFOLD = {
+    "SITE_TITLE": "Helpdesk",
+    "SITE_HEADER": "Helpdesk",
+    
+}

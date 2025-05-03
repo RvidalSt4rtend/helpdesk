@@ -1,0 +1,26 @@
+from django.utils.translation import gettext_lazy as _
+from django.db import models
+
+class TicketPriorityOptions(models.IntegerChoices):
+    CRITICA = 1, _("Critica")
+    ALTA = 2, _("Alta")
+    MEDIA = 3, _("Media")
+    BAJA = 4, _("Baja")
+
+class TicketStatusOptions(models.IntegerChoices):
+    ABIERTO = 1, _("Abierto")
+    CERRADO = 2, _("Cerrado")
+    RESUELTO = 3, _("Resuelto")
+    REABIERTO = 4, _("Reabierto")
+
+class TicketGradeOptions(models.IntegerChoices):
+    MUY_BUENA = 1, _("Muy Buena")
+    BUENA = 2, _("Buena")
+    NORMAL = 3, _("Normal")
+    BAJA = 4, _("Baja")
+    MUY_BAJA = 5, _("Muy Baja")
+
+class TicketCategoryOptions(models.IntegerChoices):
+    HARDWARE = 1, _("Hardware")
+    SOFTWARE = 2, _("Software")
+    REDES = 3, _("Redes")

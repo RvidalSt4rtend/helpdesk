@@ -1,10 +1,12 @@
-from django.contrib import admin
+from django.contrib.admin  import register
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from unfold.admin import ModelAdmin
+from unfold.forms import AdminOwnPasswordChangeForm,UserChangeForm,UserCreationForm
 from .models import *
 # Register your models here.
 
-@admin.register(User)
-class UserAdmin(BaseUserAdmin):
+@register(User)
+class UserAdmin(BaseUserAdmin, ModelAdmin):
     # Definir los campos para el formulario de creación de usuarios
     add_fieldsets = (
         (None, {
@@ -17,3 +19,6 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = BaseUserAdmin.fieldsets + (
         (None, {'fields': ('dni_usuario','celular')}),  # Agrega tu campo personalizado aquí
     )
+    form=UserChangeForm
+    add_form=UserCreationForm
+    change_password_form=AdminOwnPasswordChangeForm
