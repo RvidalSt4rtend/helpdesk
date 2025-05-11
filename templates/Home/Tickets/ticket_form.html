@@ -1,0 +1,20 @@
+{% extends 'Home/Index.html' %}
+{% load crispy_forms_tags %}
+{% load tailwind_filters %}
+
+{% block title %}{% if edit %}Editar Ticket{% else %}Crear Ticket{% endif %}{% endblock %}
+{% block panel_title %}{% if edit %}Editar Ticket{% else %}Crear Nuevo Ticket{% endif %}{% endblock %}
+
+{% block panel_content %}
+<form method="post" enctype="multipart/form-data" class="space-y-4">
+    {% csrf_token %}
+    {{ form|crispy }}
+
+    <div class="flex space-x-4">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
+            {% if edit %}Actualizar{% else %}Guardar{% endif %}
+        </button>
+        <a href="{% url 'helpdesk:ticket_list' %}" class="text-gray-600 hover:text-gray-900 self-center">Cancelar</a>
+    </div>
+</form>
+{% endblock %}

@@ -30,6 +30,7 @@ THIRD_PARTY_APPS = [
     'rest_framework',
     'crispy_forms',
     'crispy_tailwind',
+    'django_crontab',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + LOCAL_APPS + THIRD_PARTY_APPS
@@ -121,6 +122,8 @@ if not DEBUG:
 # Configuración para archivos estáticos
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATIC_URL = '/staticfiles/'
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
@@ -129,3 +132,7 @@ UNFOLD = {
     "SITE_HEADER": "Helpdesk",
     
 }
+
+CRONJOBS = [
+    ('*/10 * * * *', 'django.core.management.call_command', ['check_sla']),  # Cada 10 minutos
+]

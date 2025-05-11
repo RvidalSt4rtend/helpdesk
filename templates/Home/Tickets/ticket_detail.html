@@ -1,0 +1,181 @@
+{% extends 'Home/Index.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Detalle del Ticket{% endblock %}
+{% block panel_title %}Ticket {{ ticket.code }} - {{ ticket.title }}{% endblock %}
+
+{% block panel_content %}
+<div class="space-y-4">
+    <!-- Información del ticket -->
+    <div class="bg-white shadow rounded p-4">
+        <h3 class="text-lg font-semibold mb-2">Información del Ticket</h3>
+        <div class="grid grid-cols-2 gap-2">
+            <div>
+                <span class="font-medium">Estado:</span> 
+                <span class="px-2 py-1 rounded-full text-xs 
+                {% if ticket.estado == 1 %}bg-green-100 text-green-800{% endif %}
+                {% if ticket.estado == 2 %}bg-red-100 text-red-800{% endif %}
+                {% if ticket.estado == 3 %}bg-blue-100 text-blue-800{% endif %}
+                {% if ticket.estado == 4 %}bg-yellow-100 text-yellow-800{% endif %}">
+                    {{ ticket.get_estado_display }}
+                </span>
+            </div>
+            <div>
+                <span class="font-medium">Prioridad:</span> 
+                <span class="px-2 py-1 rounded-full text-xs 
+                {% if ticket.prioridad == 1 %}bg-red-100 text-red-800{% endif %}
+                {% if ticket.prioridad == 2 %}bg-orange-100 text-orange-800{% endif %}
+                {% if ticket.prioridad == 3 %}bg-yellow-100 text-yellow-800{% endif %}
+                {% if ticket.prioridad == 4 %}bg-green-100 text-green-800{% endif %}">
+                    {{ ticket.get_prioridad_display }}
+                </span>
+            </div>
+            <div>
+                <span class="font-medium">Tipo:</span> {{ ticket.tipo.nombre }}
+            </div>
+            <div>
+                <span class="font-medium">Creado:</span> {{ ticket.created_at|date:"d/m/Y H:i" }}
+            </div>
+            {% if ticket.close_date %}
+            <div>
+                <span class="font-medium">Cerrado:</span> {{ ticket.close_date|date:"d/m/Y H:i" }}
+            </div>
+            {% endif %}
+            {% if ticket.calificacion != 3 %}
+            <div>
+                <span class="font-medium">Calificación:</span> 
+                <span class="px-2 py-1 rounded-full text-xs 
+                {% if ticket.calificacion == 1 %}bg-green-100 text-green-800{% endif %}
+                {% if ticket.calificacion == 2 %}bg-blue-100 text-blue-800{% endif %}
+                {% if ticket.calificacion == 4 %}bg-orange-100 text-orange-800{% endif %}
+                {% if ticket.calificacion == 5 %}bg-red-100 text-red-800{% endif %}">
+                    {{ ticket.get_calificacion_display }}
+                </span>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="mt-4">
+            <h4 class="font-medium">Descripción:</h4>
+            <p class="text-gray-700 whitespace-pre-line">{{ ticket.description|default:"Sin descripción" }}</p>
+        </div>
+        
+        {% if ticket.adjunto %}
+        <div class="mt-4">
+            <h4 class="font-medium">Adjunto:</h4>
+            {% with ticket.adjunto.url|lower as file_url %}
+                {% if ".jpg" in file_url or ".jpeg" in file_url or ".png" in file_url or ".gif" in file_url %}
+                    <img src="{{ file_url }}" alt="Adjunto" class="w-64 h-auto rounded shadow-md mt-2">
+                {% elif ".pdf" in file_url %}
+                    <iframe src="{{ file_url }}" width="100%" height="300px" class="rounded shadow-md border mt-2"></iframe>
+                {% else %}
+                    <a href="{{ file_url }}" target="_blank" class="text-blue-500 underline mt-2 inline-block">Ver archivo adjunto</a>
+                {% endif %}
+            {% endwith %}
+        {% endif %}
+    </div>
+    
+    <!-- Acciones -->
+    <div class="flex space-x-2">
+        {% if ticket.estado != 2 and ticket.estado != 3 %}
+            <a href="{% url 'helpdesk:ticket_update' ticket.id %}" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Editar</a>
+            <a href="{% url 'helpdesk:ticket_close' ticket.id %}" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('¿Estás seguro de cerrar este ticket?')">Cerrar</a>
+        {% else %}
+            <!-- Botón para reabrir si está cerrado o resuelto -->
+            <a href="{% url 'helpdesk:ticket_reopen' ticket.id %}" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('¿Estás seguro de reabrir este ticket?')">Reabrir</a>
+        {% endif %}
+        <a href="{% url 'helpdesk:ticket_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1 rounded text-sm">Volver</a>
+    </div>
+    
+    <!-- Sistema de calificación -->
+    {% if puede_calificar and ticket.calificacion == 3 %}
+    <div class="bg-white shadow rounded p-4">
+        <h3 class="text-lg font-semibold mb-2">Calificar Servicio</h3>
+        <form method="post" action="{% url 'helpdesk:ticket_rate' ticket.id %}">
+            {% csrf_token %}
+            <div class="flex space-x-4 mb-2">
+                {% for opcion in calificacion_opciones %}
+                <label class="flex items-center space-x-1 cursor-pointer">
+                    <input type="radio" name="calificacion" value="{{ opcion.0 }}" class="form-radio" required>
+                    <span>{{ opcion.1 }}</span>
+                </label>
+                {% endfor %}
+            </div>
+            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">Enviar Calificación</button>
+        </form>
+    </div>
+    {% endif %}
+    
+    <!-- Historial de cambios -->
+    <div class="bg-white shadow rounded p-4">
+        <h3 class="text-lg font-semibold mb-2">Historial de Cambios</h3>
+        {% if historial %}
+        <div class="space-y-2">
+            {% for cambio in historial %}
+            <div class="border-b pb-2 last:border-b-0">
+                <div class="flex justify-between">
+                    <span class="font-medium">{{ cambio.created_at|date:"d/m/Y H:i" }}</span>
+                    <span class="text-gray-500 text-xs">por {{ cambio.usuario.username }}</span>
+                </div>
+                <p class="text-sm">
+                    {{ cambio.descripcion|default:"" }}
+                </p>
+                {% if cambio.valor_anterior != cambio.valor_nuevo and cambio.campo_modificado != 'interaccion' %}
+                <div class="grid grid-cols-2 text-xs mt-1 text-gray-600">
+                    <div>
+                        <span class="italic">Antes:</span> 
+                        <span class="font-mono">{{ cambio.valor_anterior|default:"-" }}</span>
+                    </div>
+                    <div>
+                        <span class="italic">Después:</span> 
+                        <span class="font-mono">{{ cambio.valor_nuevo|default:"-" }}</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500 italic">No hay historial de cambios</p>
+        {% endif %}
+    </div>
+    
+    <!-- Interacciones/Mensajes -->
+    <div class="bg-white shadow rounded p-4">
+        <h3 class="text-lg font-semibold mb-2">Mensajes</h3>
+        
+        <!-- Lista de mensajes -->
+        <div class="space-y-4 mb-4">
+            {% if interacciones %}
+                {% for mensaje in interacciones %}
+                <div class="rounded p-3 {% if mensaje.es_agente %}bg-blue-50 ml-8{% else %}bg-gray-50 mr-8{% endif %}">
+                    <div class="flex justify-between items-center mb-1">
+                        <div class="font-medium {% if mensaje.es_agente %}text-blue-700{% else %}text-gray-700{% endif %}">
+                            {{ mensaje.usuario.username }}
+                            {% if mensaje.es_agente %}<span class="text-xs bg-blue-200 text-blue-800 px-2 py-0.5 rounded-full ml-2">Agente</span>{% endif %}
+                        </div>
+                        <div class="text-xs text-gray-500">{{ mensaje.created_at|date:"d/m/Y H:i" }}</div>
+                    </div>
+                    <p class="text-gray-700 whitespace-pre-line">{{ mensaje.mensaje }}</p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-gray-500 italic">No hay mensajes aún</p>
+            {% endif %}
+        </div>
+        
+        <!-- Formulario de mensajes -->
+        {% if ticket.estado != 2 and ticket.estado != 3 %}
+        <form method="post" class="space-y-2">
+            {% csrf_token %}
+            {{ form|crispy }}
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">Enviar Mensaje</button>
+        </form>
+        {% else %}
+        <div class="bg-gray-100 p-3 rounded">
+            <p class="text-gray-600 text-sm">Este ticket está cerrado y no se pueden añadir más mensajes.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

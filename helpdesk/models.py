@@ -5,7 +5,7 @@ from users.models import User
 
 
 class TicketType(TimeStampModel):
-    categoria=models.CharField(max_length=100,choices=TicketCategoryOptions)
+    categoria=models.IntegerField(choices=TicketCategoryOptions)
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(max_length=500, blank=True, null=True)
     sla = models.IntegerField(max_length=2)
@@ -23,10 +23,10 @@ class Ticket(TimeStampModel):
     code=models.CharField(max_length=10, unique=True, blank=True, null=True)
     title=models.CharField(max_length=100)
     description=models.TextField(max_length=800,blank=True,null=True)
-    prioridad=models.CharField(choices=TicketPriorityOptions,default=TicketPriorityOptions.BAJA)
-    estado=models.CharField(choices=TicketStatusOptions,default=TicketStatusOptions.ABIERTO)
+    prioridad=models.IntegerField(choices=TicketPriorityOptions,default=TicketPriorityOptions.BAJA)
+    estado=models.IntegerField(choices=TicketStatusOptions,default=TicketStatusOptions.ABIERTO)
     adjunto=models.FileField(upload_to='tickets/', blank=True, null=True)
-    calificacion=models.CharField(choices=TicketGradeOptions,default=TicketGradeOptions.NORMAL)
+    calificacion=models.IntegerField(choices=TicketGradeOptions,default=TicketGradeOptions.NORMAL)
     close_date=models.DateTimeField(blank=True,null=True)
     tipo = models.ForeignKey(TicketType, on_delete=models.RESTRICT, related_name='tickets')
 
@@ -39,13 +39,45 @@ class Ticket(TimeStampModel):
         return f"Ticket #{self.id} - {self.title}"
         
     def save(self, *args, **kwargs):
-
+        is_new = self.pk is None
+        
+        # Guardar el estado anterior para detectar cambios
+        if not is_new:
+            old_instance = Ticket.objects.get(pk=self.pk)
+            old_estado = old_instance.estado
+            old_calificacion = old_instance.calificacion
+        
+        # Guardar primero para generar un ID si es nuevo
         if not self.code:
             super(Ticket, self).save(*args, **kwargs)
             self.code = f"#{self.id:05d}"
             super(Ticket, self).save(update_fields=['code'])
         else:
             super(Ticket, self).save(*args, **kwargs)
+        
+        # Registrar cambios si no es nuevo
+        if not is_new and hasattr(self, 'usuario_actual'):
+            # Registrar cambio de estado si hubo cambio
+            if old_estado != self.estado:
+                TicketHistory.registrar_cambio(
+                    ticket=self,
+                    usuario=self.usuario_actual,
+                    campo='estado',
+                    valor_anterior=old_instance.get_estado_display(),
+                    valor_nuevo=self.get_estado_display(),
+                    descripcion=f"Cambio de estado de {old_instance.get_estado_display()} a {self.get_estado_display()}"
+                )
+            
+            # Registrar calificación si fue calificado
+            if old_calificacion != self.calificacion and self.calificacion != TicketGradeOptions.NORMAL:
+                TicketHistory.registrar_cambio(
+                    ticket=self,
+                    usuario=self.usuario_actual,
+                    campo='calificacion',
+                    valor_anterior=old_instance.get_calificacion_display(),
+                    valor_nuevo=self.get_calificacion_display(),
+                    descripcion=f"Ticket calificado con {self.get_calificacion_display()}"
+                )
 
 class Asignacion(TimeStampModel):
     ticket = models.ForeignKey(Ticket, on_delete=models.RESTRICT, related_name='asignaciones')

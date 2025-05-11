@@ -11,7 +11,7 @@
         </div>
         <nav class="p-4 space-y-2">
             <a href="#" class="block text-gray-700 hover:text-blue-500">Inicio</a>
-            <a href="#" class="block text-gray-700 hover:text-blue-500">Tickets</a>
+            <a href="{% url 'helpdesk:ticket_list' %}" class="block text-gray-700 hover:text-blue-500">Tickets</a>
             <a href="#" class="block text-gray-700 hover:text-blue-500">Usuarios</a>
             <a href="#" class="block text-gray-700 hover:text-blue-500">Reportes</a>
             <a href="#" class="block text-gray-700 hover:text-blue-500">Configuración</a>
@@ -23,10 +23,10 @@
     <main class="flex-1 p-6">
         <div class="bg-white rounded-lg shadow-md">
             <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-800">Bienvenidos</h3>
+                <h3 class="text-xl font-semibold text-gray-800">{% block panel_title %}Panel{% endblock %}</h3>
             </div>
             <div class="p-6">
-                <p class="text-gray-700">Bienvenido a nuestro sistema de ayuda</p>
+                {% block panel_content %}{% endblock %}
             </div>
         </div>
     </main>
