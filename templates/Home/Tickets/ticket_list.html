@@ -1,6 +1,23 @@
 {% extends 'Home/Index.html' %}
-{% block title %}Mis Tickets{% endblock %}
-{% block panel_title %}Listado de Tickets{% endblock %}
+{% block title %}
+  {% if es_administrador %}
+    Todos los Tickets
+  {% elif es_soporte %}
+    Tickets Asignados
+  {% else %}
+    Mis Tickets
+  {% endif %}
+{% endblock %}
+
+{% block panel_title %}
+  {% if es_administrador %}
+    Listado Completo de Tickets
+  {% elif es_soporte %}
+    Tickets Asignados a Mí
+  {% else %}
+    Mis Tickets Creados
+  {% endif %}
+{% endblock %}
 
 {% block panel_content %}
 <a href="{% url 'helpdesk:ticket_create' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mb-4 inline-block">Nuevo Ticket</a>
@@ -12,6 +29,15 @@
             <th class="py-2 px-4">Título</th>
             <th class="py-2 px-4">Estado</th>
             <th class="py-2 px-4">Prioridad</th>
+            {% if es_administrador or es_soporte %}
+            <th class="py-2 px-4">Tipo</th>
+            {% endif %}
+            {% if es_administrador %}
+            <th class="py-2 px-4">Solicitante</th>
+            {% endif %}
+            {% if es_administrador or es_soporte %}
+            <th class="py-2 px-4">Fecha</th>
+            {% endif %}
             <th class="py-2 px-4">Acciones</th>
         </tr>
     </thead>
@@ -20,14 +46,45 @@
         <tr class="border-b">
             <td class="py-2 px-4">{{ ticket.code }}</td>
             <td class="py-2 px-4">{{ ticket.title }}</td>
-            <td class="py-2 px-4">{{ ticket.get_estado_display }}</td>
-            <td class="py-2 px-4">{{ ticket.get_prioridad_display }}</td>
+            <td class="py-2 px-4">
+                <span class="px-2 py-1 rounded-full text-xs 
+                {% if ticket.estado == 1 %}bg-green-100 text-green-800{% endif %}
+                {% if ticket.estado == 2 %}bg-red-100 text-red-800{% endif %}
+                {% if ticket.estado == 3 %}bg-blue-100 text-blue-800{% endif %}
+                {% if ticket.estado == 4 %}bg-yellow-100 text-yellow-800{% endif %}">
+                    {{ ticket.get_estado_display }}
+                </span>
+            </td>
+            <td class="py-2 px-4">
+                <span class="px-2 py-1 rounded-full text-xs 
+                {% if ticket.prioridad == 1 %}bg-red-100 text-red-800{% endif %}
+                {% if ticket.prioridad == 2 %}bg-orange-100 text-orange-800{% endif %}
+                {% if ticket.prioridad == 3 %}bg-yellow-100 text-yellow-800{% endif %}
+                {% if ticket.prioridad == 4 %}bg-green-100 text-green-800{% endif %}">
+                    {{ ticket.get_prioridad_display }}
+                </span>
+            </td>
+            {% if es_administrador or es_soporte %}
+            <td class="py-2 px-4">{{ ticket.tipo.nombre }}</td>
+            {% endif %}
+            {% if es_administrador %}
+            <td class="py-2 px-4">
+                {% for asignacion in ticket.asignaciones.all %}
+                    {% if forloop.first %}
+                        {{ asignacion.solicitante.username }}
+                    {% endif %}
+                {% endfor %}
+            </td>
+            {% endif %}
+            {% if es_administrador or es_soporte %}
+            <td class="py-2 px-4">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+            {% endif %}
             <td class="py-2 px-4">
                 <a href="{% url 'helpdesk:ticket_detail' ticket.id %}" class="text-blue-500 hover:underline">Ver</a>
             </td>
         </tr>
         {% empty %}
-        <tr><td colspan="5" class="py-4 px-4 text-center text-gray-500">No hay tickets.</td></tr>
+        <tr><td colspan="{% if es_administrador %}8{% elif es_soporte %}7{% else %}5{% endif %}" class="py-4 px-4 text-center text-gray-500">No hay tickets.</td></tr>
         {% endfor %}
     </tbody>
 </table>

@@ -11,13 +11,13 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username','dni_usuario','categoria' ,'password1', 'password2', 'email', 'first_name', 'last_name','celular'),
+            'fields': ('username','dni_usuario' ,'password1', 'password2', 'email', 'first_name', 'last_name','celular','tipo_usuario'),
         }),
     )
 
     # Definir los campos para el formulario de edición de usuarios
     fieldsets = BaseUserAdmin.fieldsets + (
-        (None, {'fields': ('dni_usuario','celular')}),  # Agrega tu campo personalizado aquí
+        (None, {'fields': ('dni_usuario','celular','tipo_usuario')}),  # Agrega tu campo personalizado aquí
     )
     form=UserChangeForm
     add_form=UserCreationForm

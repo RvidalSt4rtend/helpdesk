@@ -8,6 +8,14 @@ class TicketPriorityOptions(models.IntegerChoices):
     BAJA = 4, _("Baja")
 
 class TicketStatusOptions(models.IntegerChoices):
+    """
+    Estados del ticket y su significado:
+    
+    - ABIERTO: Problema reportado, pendiente de atención.
+    - RESUELTO: El problema fue atendido pero espera confirmación del cliente. Se puede reabrir fácilmente.
+    - CERRADO: El proceso está completamente finalizado, no se espera más interacción. No se puede reabrir normalmente.
+    - REABIERTO: Ticket que estaba resuelto o cerrado pero fue reabierto por el cliente o soporte.
+    """
     ABIERTO = 1, _("Abierto")
     CERRADO = 2, _("Cerrado")
     RESUELTO = 3, _("Resuelto")

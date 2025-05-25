@@ -2,6 +2,9 @@ from django.db import models
 from common.models import TimeStampModel
 from helpdesk.choices import TicketStatusOptions,TicketPriorityOptions,TicketGradeOptions,TicketCategoryOptions
 from users.models import User
+from django.db.models import Count
+from django.contrib.auth.models import Group
+import random
 
 
 class TicketType(TimeStampModel):
@@ -9,6 +12,7 @@ class TicketType(TimeStampModel):
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(max_length=500, blank=True, null=True)
     sla = models.IntegerField(max_length=2)
+    grupo_soporte = models.ForeignKey(Group, on_delete=models.SET_NULL, related_name='tipos_ticket', null=True, blank=True, verbose_name='Grupo de soporte asignado')
 
     class Meta:
         verbose_name = 'Tipo de Ticket'
@@ -55,6 +59,10 @@ class Ticket(TimeStampModel):
         else:
             super(Ticket, self).save(*args, **kwargs)
         
+        # Asignar automáticamente si es un ticket nuevo y hay un usuario actual
+        if is_new and hasattr(self, 'usuario_actual'):
+            self.asignar_automaticamente(self.usuario_actual)
+        
         # Registrar cambios si no es nuevo
         if not is_new and hasattr(self, 'usuario_actual'):
             # Registrar cambio de estado si hubo cambio
@@ -78,6 +86,58 @@ class Ticket(TimeStampModel):
                     valor_nuevo=self.get_calificacion_display(),
                     descripcion=f"Ticket calificado con {self.get_calificacion_display()}"
                 )
+    
+    def asignar_automaticamente(self, solicitante):
+        """
+        Asigna automáticamente el ticket a un agente del grupo correspondiente
+        utilizando una estrategia de balanceo de carga
+        
+        Args:
+            solicitante: Usuario que creó el ticket
+        """
+        if not self.tipo or not self.tipo.grupo_soporte:
+            return False
+        
+        # Obtener el nombre del grupo de soporte
+        nombre_grupo = self.tipo.grupo_soporte.name
+        
+        # Obtener agentes disponibles para este grupo
+        agentes = User.get_agentes_disponibles(grupo=nombre_grupo)
+        
+        if not agentes.exists():
+            return False
+        
+        # Estrategia: asignar al agente con menos tickets abiertos
+        agentes_con_carga = agentes.annotate(
+            total_tickets=Count('tickets_asignados', filter=models.Q(
+                tickets_asignados__ticket__estado=TicketStatusOptions.ABIERTO) | 
+                models.Q(tickets_asignados__ticket__estado=TicketStatusOptions.REABIERTO)
+            )
+        ).order_by('total_tickets')
+        
+        # Si hay empate, elegir aleatoriamente entre los que tienen menos carga
+        min_carga = agentes_con_carga.first().total_tickets
+        agentes_menos_cargados = agentes_con_carga.filter(total_tickets=min_carga)
+        agente_seleccionado = random.choice(list(agentes_menos_cargados))
+        
+        # Crear la asignación
+        Asignacion.objects.create(
+            ticket=self,
+            agente=agente_seleccionado,
+            solicitante=solicitante
+        )
+        
+        # Registrar en historial
+        TicketHistory.registrar_cambio(
+            ticket=self,
+            usuario=solicitante,
+            campo='asignacion',
+            valor_anterior='',
+            valor_nuevo=agente_seleccionado.username,
+            descripcion=f"Ticket asignado automáticamente a {agente_seleccionado.username}"
+        )
+        
+        return True
 
 class Asignacion(TimeStampModel):
     ticket = models.ForeignKey(Ticket, on_delete=models.RESTRICT, related_name='asignaciones')
