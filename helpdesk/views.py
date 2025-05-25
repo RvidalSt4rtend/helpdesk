@@ -1,13 +1,18 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Ticket, TicketHistory, TicketStatusOptions, TicketGradeOptions, Asignacion
+from .models import Ticket, TicketHistory, TicketStatusOptions, TicketGradeOptions, Asignacion, TicketType
 from .forms import TicketForm, TicketUpdateForm, InteraccionTicketForm, ClienteTicketUpdateForm
 from django.contrib.auth.decorators import login_required
 from django.utils import timezone
 from django.http import HttpResponseForbidden
 from users.choices import UserTypeOptions
+from helpdesk.choices import TicketStatusOptions, TicketGradeOptions, TicketPriorityOptions
 from django.db.models import Q, Prefetch
+from users.models import User
+import json
+import random
+from django.core.paginator import Paginator
 
 # Función para verificar permisos según tipo de usuario
 def check_permission(user, action_type, ticket=None):
@@ -94,11 +99,70 @@ def ticket_list(request):
         tickets = base_query.filter(
             asignaciones__solicitante=request.user
         ).distinct()
+    
+    # Aplicar filtros de búsqueda
+    search_query = request.GET.get('search', '')
+    if search_query:
+        tickets = tickets.filter(
+            Q(code__icontains=search_query) |
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query)
+        )
+    
+    # Filtro por estado
+    estado = request.GET.get('estado')
+    if estado and estado.isdigit():
+        tickets = tickets.filter(estado=int(estado))
+    
+    # Filtro por prioridad
+    prioridad = request.GET.get('prioridad')
+    if prioridad and prioridad.isdigit():
+        tickets = tickets.filter(prioridad=int(prioridad))
+    
+    # Filtro por categoría
+    categoria = request.GET.get('categoria')
+    if categoria and categoria.isdigit():
+        tickets = tickets.filter(tipo_id=int(categoria))
+    
+    # Ordenar tickets (por defecto por fecha de creación descendente)
+    order_by = request.GET.get('order_by', '-created_at')
+    tickets = tickets.order_by(order_by)
+    
+    # Paginación
+    paginator = Paginator(tickets, 10)  # 10 tickets por página
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Obtener listas para los selectores de filtro
+    estados = TicketStatusOptions.choices
+    prioridades = TicketPriorityOptions.choices
+    categorias = TicketType.objects.all()
+    
+    # Calcular estadísticas para mostrar en la cabecera
+    tickets_abiertos = base_query.filter(estado=TicketStatusOptions.ABIERTO).count()
+    tickets_resueltos = base_query.filter(estado=TicketStatusOptions.RESUELTO).count()
+    tickets_cerrados = base_query.filter(estado=TicketStatusOptions.CERRADO).count()
+    tickets_reabiertos = base_query.filter(estado=TicketStatusOptions.REABIERTO).count()
         
     return render(request, 'Home/Tickets/ticket_list.html', {
-        'tickets': tickets,
+        'page_obj': page_obj,
+        'tickets_count': tickets.count(),
+        'estados': estados,
+        'prioridades': prioridades,
+        'categorias': categorias,
+        'tickets_abiertos': tickets_abiertos,
+        'tickets_resueltos': tickets_resueltos,
+        'tickets_cerrados': tickets_cerrados,
+        'tickets_reabiertos': tickets_reabiertos,
         'es_administrador': request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR,
-        'es_soporte': request.user.tipo_usuario == UserTypeOptions.SOPORTE
+        'es_soporte': request.user.tipo_usuario == UserTypeOptions.SOPORTE,
+        'filtros': {
+            'search': search_query,
+            'estado': estado,
+            'prioridad': prioridad,
+            'categoria': categoria,
+            'order_by': order_by
+        }
     })
 
 @login_required
@@ -428,3 +492,319 @@ def ticket_resolve(request, pk):
     
     messages.success(request, 'Ticket marcado como resuelto correctamente')
     return redirect('helpdesk:ticket_detail', pk=pk)
+
+@login_required
+def dashboard_view(request):
+    """
+    Dashboard con información resumida y visualizaciones gráficas de tickets
+    """
+    # Verificar si el usuario tiene permisos para acceder al dashboard
+    if request.user.tipo_usuario not in [UserTypeOptions.ADMINISTRADOR, UserTypeOptions.SOPORTE]:
+        messages.error(request, 'No tienes permisos para acceder al dashboard')
+        return redirect('helpdesk:ticket_list')
+    
+    # Determinar si es administrador
+    es_administrador = request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR
+    
+    # Lógica para obtener los tickets filtrados según el tipo de usuario
+    if es_administrador:
+        # Administradores ven todos los tickets
+        tickets_base = Ticket.objects.all()
+        tickets_activos = tickets_base.filter(
+            estado__in=[TicketStatusOptions.ABIERTO, TicketStatusOptions.REABIERTO]
+        )
+    else:
+        # Agentes de soporte solo ven sus tickets asignados
+        tickets_base = Ticket.objects.filter(asignaciones__agente=request.user)
+        tickets_activos = tickets_base.filter(
+            estado__in=[TicketStatusOptions.ABIERTO, TicketStatusOptions.REABIERTO]
+        )
+    
+    # Contar tickets por categoría/tipo
+    tickets_por_categoria = {}
+    categorias = TicketType.objects.all()
+    for categoria in categorias:
+        count = tickets_activos.filter(tipo=categoria).count()
+        tickets_por_categoria[categoria.nombre] = count
+    
+    # Estadísticas generales, filtradas por usuario si es agente
+    tickets_abiertos = tickets_base.filter(estado=TicketStatusOptions.ABIERTO).count()
+    tickets_resueltos = tickets_base.filter(estado=TicketStatusOptions.RESUELTO).count()
+    tickets_cerrados = tickets_base.filter(estado=TicketStatusOptions.CERRADO).count()
+    tickets_reabiertos = tickets_base.filter(estado=TicketStatusOptions.REABIERTO).count()
+    
+    # Total de tickets (global para admin, específicos para agente)
+    total_tickets = tickets_base.count()
+    
+    # Tickets por prioridad
+    tickets_criticos = tickets_activos.filter(prioridad=TicketPriorityOptions.CRITICA).count()
+    tickets_altos = tickets_activos.filter(prioridad=TicketPriorityOptions.ALTA).count()
+    tickets_medios = tickets_activos.filter(prioridad=TicketPriorityOptions.MEDIA).count()
+    tickets_bajos = tickets_activos.filter(prioridad=TicketPriorityOptions.BAJA).count()
+    
+    # Tickets recientes (todos para admin, solo del agente para soporte)
+    if es_administrador:
+        tickets_recientes = Ticket.objects.all().order_by('-created_at')[:5]
+        actividad_reciente = TicketHistory.objects.all().order_by('-created_at')[:10]
+    else:
+        tickets_recientes = tickets_base.order_by('-created_at')[:5]
+        # Mostrar solo actividad relacionada con los tickets del agente
+        tickets_ids = tickets_base.values_list('id', flat=True)
+        actividad_reciente = TicketHistory.objects.filter(ticket_id__in=tickets_ids).order_by('-created_at')[:10]
+    
+    # Si es administrador, mostrar carga de trabajo de todos los agentes
+    # Si es agente, solo mostrar su propia carga de trabajo
+    carga_agentes = []
+    
+    if es_administrador:
+        # Mostrar datos de todos los agentes
+        agentes = User.objects.filter(tipo_usuario=UserTypeOptions.SOPORTE)
+    else:
+        # Solo mostrar datos del agente actual
+        agentes = User.objects.filter(id=request.user.id)
+    
+    # Preparar datos para gráficos en formato JSON
+    datos_categorias = {
+        'labels': list(tickets_por_categoria.keys()),
+        'data': list(tickets_por_categoria.values())
+    }
+    
+    datos_estados = {
+        'labels': ['Abiertos', 'Resueltos', 'Cerrados', 'Reabiertos'],
+        'data': [tickets_abiertos, tickets_resueltos, tickets_cerrados, tickets_reabiertos]
+    }
+    
+    datos_prioridad = {
+        'labels': ['Crítica', 'Alta', 'Media', 'Baja'],
+        'data': [tickets_criticos, tickets_altos, tickets_medios, tickets_bajos]
+    }
+    
+    # Datos para el gráfico de rendimiento de agentes
+    # Para administradores: todos los agentes
+    # Para agentes: solo sus propios datos
+    agentes_usernames = []
+    agentes_tickets_resueltos = []
+    
+    # También crear datos detallados para el panel de rendimiento
+    agentes_rendimiento = []
+    tickets_max = 0  # Para calcular el máximo y hacer las barras proporcionales
+    
+    for agente in agentes:
+        # Contar tickets resueltos por este agente
+        tickets_resueltos_agente = Ticket.objects.filter(
+            estado=3,  # Estado resuelto
+            asignaciones__agente=agente
+        ).count()
+        
+        # Guardar para el gráfico
+        agentes_usernames.append(agente.username)
+        agentes_tickets_resueltos.append(tickets_resueltos_agente)
+        
+        # Actualizar el máximo
+        if tickets_resueltos_agente > tickets_max:
+            tickets_max = tickets_resueltos_agente
+        
+        # Datos detallados para cada agente
+        tickets_pendientes = Ticket.objects.filter(
+            estado=1,  # Estado abierto
+            asignaciones__agente=agente
+        ).count()
+        
+        # Calcular tiempo medio de resolución (simulado - ajustar según modelo real)
+        tiempo_medio = round(random.uniform(1.5, 8.5), 1)  # Ejemplo: entre 1.5 y 8.5 horas
+        
+        # Calcular satisfacción media (simulado - ajustar según modelo real)
+        satisfaccion = round(random.uniform(3.5, 5.0), 1)  # Ejemplo: entre 3.5 y 5.0
+        
+        # Calcular eficiencia (porcentaje basado en alguna métrica, simulado aquí)
+        eficiencia = min(100, int((tickets_resueltos_agente / max(1, tickets_pendientes + tickets_resueltos_agente)) * 100))
+        
+        # Agregar datos del agente
+        agentes_rendimiento.append({
+            'username': agente.username,
+            'tickets_resueltos': tickets_resueltos_agente,
+            'tickets_pendientes': tickets_pendientes,
+            'tiempo_medio': tiempo_medio,
+            'satisfaccion': satisfaccion,
+            'eficiencia': eficiencia
+        })
+    
+    # Ordenar agentes por tickets resueltos (descendente)
+    agentes_rendimiento = sorted(agentes_rendimiento, key=lambda x: x['tickets_resueltos'], reverse=True)
+    
+    # Calcular estadísticas globales
+    if agentes_rendimiento:
+        tiempo_promedio_global = round(sum(a['tiempo_medio'] for a in agentes_rendimiento) / len(agentes_rendimiento), 1)
+        satisfaccion_media = round(sum(a['satisfaccion'] for a in agentes_rendimiento) / len(agentes_rendimiento), 1)
+        eficiencia_media = int(sum(a['eficiencia'] for a in agentes_rendimiento) / len(agentes_rendimiento))
+        total_resueltos_mes = sum(a['tickets_resueltos'] for a in agentes_rendimiento)
+    else:
+        tiempo_promedio_global = 0
+        satisfaccion_media = 0
+        eficiencia_media = 0
+        total_resueltos_mes = 0
+    
+    # Calcular top agentes (con porcentaje sobre promedio) - solo para administradores
+    top_agentes = []
+    if es_administrador and agentes_rendimiento:
+        # Para administradores: obtener el top 5 de todos los agentes
+        top_agentes = agentes_rendimiento[:5]
+        
+        # Calcular promedio de tickets resueltos entre todos los agentes
+        promedio_tickets = sum(a['tickets_resueltos'] for a in agentes_rendimiento) / len(agentes_rendimiento)
+        
+        # Calcular porcentaje sobre el promedio para cada agente del top
+        for agente in top_agentes:
+            if promedio_tickets > 0:
+                agente['porcentaje_sobre_promedio'] = int((agente['tickets_resueltos'] / promedio_tickets * 100) - 100)
+            else:
+                agente['porcentaje_sobre_promedio'] = 0
+    
+    # Serializar datos para el gráfico de agentes
+    datos_agentes_json = json.dumps({
+        'labels': agentes_usernames,
+        'data': agentes_tickets_resueltos
+    })
+    
+    return render(request, 'Home/dashboard.html', {
+        'total_tickets': total_tickets,
+        'tickets_abiertos': tickets_abiertos,
+        'tickets_resueltos': tickets_resueltos,
+        'tickets_cerrados': tickets_cerrados,
+        'tickets_reabiertos': tickets_reabiertos,
+        'tickets_por_categoria': tickets_por_categoria,
+        'tickets_recientes': tickets_recientes,
+        'actividad_reciente': actividad_reciente,
+        'carga_agentes': carga_agentes,
+        'datos_categorias_json': json.dumps(datos_categorias),
+        'datos_estados_json': json.dumps(datos_estados),
+        'datos_prioridad_json': json.dumps(datos_prioridad),
+        'es_administrador': es_administrador,
+        'datos_agentes_json': datos_agentes_json,
+        'agentes_rendimiento': agentes_rendimiento,
+        'tickets_max': tickets_max or 1,  # Evitar división por cero
+        'tiempo_promedio_global': tiempo_promedio_global,
+        'satisfaccion_media': satisfaccion_media,
+        'eficiencia_media': eficiencia_media,
+        'total_resueltos_mes': total_resueltos_mes,
+        'top_agentes': top_agentes,
+    })
+
+@login_required
+def reports_view(request):
+    """
+    Vista para generar reportes personalizados
+    """
+    # Verificar si el usuario tiene permisos para acceder a los reportes
+    if request.user.tipo_usuario != UserTypeOptions.ADMINISTRADOR:
+        messages.error(request, 'No tienes permisos para acceder a los reportes')
+        return redirect('helpdesk:ticket_list')
+    
+    # Establecer filtros por defecto
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    estado = request.GET.get('estado', '')
+    prioridad = request.GET.get('prioridad', '')
+    categoria = request.GET.get('categoria', '')
+    agente = request.GET.get('agente', '')
+    
+    # Iniciar el queryset base
+    tickets = Ticket.objects.all().select_related('tipo').prefetch_related('asignaciones__agente', 'asignaciones__solicitante')
+    
+    # Aplicar filtros
+    if fecha_inicio and fecha_fin:
+        from datetime import datetime
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            tickets = tickets.filter(created_at__range=[fecha_inicio_dt, fecha_fin_dt])
+        except ValueError:
+            pass
+    
+    if estado:
+        try:
+            estado_valor = int(estado)
+            tickets = tickets.filter(estado=estado_valor)
+        except ValueError:
+            pass
+            
+    if prioridad:
+        try:
+            prioridad_valor = int(prioridad)
+            tickets = tickets.filter(prioridad=prioridad_valor)
+        except ValueError:
+            pass
+            
+    if categoria:
+        try:
+            categoria_valor = int(categoria)
+            tickets = tickets.filter(tipo_id=categoria_valor)
+        except ValueError:
+            pass
+            
+    if agente and request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR:
+        try:
+            agente_valor = int(agente)
+            tickets = tickets.filter(asignaciones__agente_id=agente_valor)
+        except ValueError:
+            pass
+    
+    # Obtener listas para los selectores de filtro
+    estados = TicketStatusOptions.choices
+    prioridades = TicketPriorityOptions.choices
+    categorias = TicketType.objects.all()
+    
+    # Obtener agentes solo si es administrador
+    agentes = []
+    if request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR:
+        agentes = User.objects.filter(tipo_usuario=UserTypeOptions.SOPORTE)
+    
+    # Calcular estadísticas para el reporte
+    total_tickets = tickets.count()
+    promedio_tiempo_resolucion = None
+    
+    # Si hay tickets en el filtro, calcular estadísticas
+    if total_tickets > 0:
+        from django.db.models import Avg, F, ExpressionWrapper, fields
+        from django.db.models.functions import Extract
+        
+        # Tickets resueltos o cerrados con tiempo de resolución
+        tickets_finalizados = tickets.filter(
+            estado__in=[TicketStatusOptions.RESUELTO, TicketStatusOptions.CERRADO],
+            close_date__isnull=False
+        )
+        
+        if tickets_finalizados.exists():
+            # Calcular tiempo promedio de resolución en días
+            tiempo_resolucion = tickets_finalizados.annotate(
+                tiempo_resolucion=ExpressionWrapper(
+                    F('close_date') - F('created_at'),
+                    output_field=fields.DurationField()
+                )
+            ).aggregate(
+                promedio=Avg('tiempo_resolucion')
+            )
+            
+            if tiempo_resolucion['promedio']:
+                # Convertir a días
+                promedio_tiempo_resolucion = tiempo_resolucion['promedio'].total_seconds() / (60 * 60 * 24)
+                promedio_tiempo_resolucion = round(promedio_tiempo_resolucion, 1)
+    
+    return render(request, 'Home/reports.html', {
+        'tickets': tickets,
+        'estados': estados,
+        'prioridades': prioridades,
+        'categorias': categorias,
+        'agentes': agentes,
+        'filtros': {
+            'fecha_inicio': fecha_inicio,
+            'fecha_fin': fecha_fin,
+            'estado': estado,
+            'prioridad': prioridad,
+            'categoria': categoria,
+            'agente': agente
+        },
+        'total_tickets': total_tickets,
+        'promedio_tiempo_resolucion': promedio_tiempo_resolucion,
+        'es_administrador': request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR
+    })

@@ -5,285 +5,382 @@
 {% block panel_title %}Ticket {{ ticket.code }} - {{ ticket.title }}{% endblock %}
 
 {% block panel_content %}
-<div class="space-y-4">
-    <!-- Información del ticket -->
-    <div class="bg-white shadow rounded p-4">
-        <h3 class="text-lg font-semibold mb-2">Información del Ticket</h3>
-        <div class="grid grid-cols-2 gap-2">
-            <div>
-                <span class="font-medium">Estado:</span> 
-                <span class="px-2 py-1 rounded-full text-xs 
-                {% if ticket.estado == 1 %}bg-green-100 text-green-800{% endif %}
-                {% if ticket.estado == 2 %}bg-red-100 text-red-800{% endif %}
-                {% if ticket.estado == 3 %}bg-blue-100 text-blue-800{% endif %}
-                {% if ticket.estado == 4 %}bg-yellow-100 text-yellow-800{% endif %}">
-                    {{ ticket.get_estado_display }}
-                </span>
-            </div>
-            <div>
-                <span class="font-medium">Prioridad:</span> 
-                <span class="px-2 py-1 rounded-full text-xs 
-                {% if ticket.prioridad == 1 %}bg-red-100 text-red-800{% endif %}
-                {% if ticket.prioridad == 2 %}bg-orange-100 text-orange-800{% endif %}
-                {% if ticket.prioridad == 3 %}bg-yellow-100 text-yellow-800{% endif %}
-                {% if ticket.prioridad == 4 %}bg-green-100 text-green-800{% endif %}">
-                    {{ ticket.get_prioridad_display }}
-                </span>
-            </div>
-            <div>
-                <span class="font-medium">Tipo:</span> {{ ticket.tipo.nombre }}
-            </div>
-            <div>
-                <span class="font-medium">Creado:</span> {{ ticket.created_at|date:"d/m/Y H:i" }}
-            </div>
-            {% if ticket.close_date %}
-            <div>
-                <span class="font-medium">Cerrado:</span> {{ ticket.close_date|date:"d/m/Y H:i" }}
-            </div>
-            {% endif %}
-            
-            <!-- Información de asignación -->
-            {% if asignaciones %}
-            <div>
-                <span class="font-medium">Solicitante:</span> {{ asignaciones.0.solicitante.username }}
-            </div>
-            <div>
-                <span class="font-medium">Agente asignado:</span> 
-                <span class="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
-                    {{ asignaciones.0.agente.username }}
-                </span>
-            </div>
-            {% endif %}
-            
-            {% if ticket.calificacion != 3 %}
-            <div>
-                <span class="font-medium">Calificación:</span> 
-                <span class="px-2 py-1 rounded-full text-xs 
-                {% if ticket.calificacion == 1 %}bg-green-100 text-green-800{% endif %}
-                {% if ticket.calificacion == 2 %}bg-blue-100 text-blue-800{% endif %}
-                {% if ticket.calificacion == 4 %}bg-orange-100 text-orange-800{% endif %}
-                {% if ticket.calificacion == 5 %}bg-red-100 text-red-800{% endif %}">
-                    {{ ticket.get_calificacion_display }}
-                </span>
-            </div>
-            {% endif %}
+<div class="space-y-6">
+    <!-- Header con acciones principales -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <span class="px-3 py-1 rounded-full text-xs font-semibold 
+            {% if ticket.estado == 1 %}bg-primary-200 bg-opacity-20 text-primary-500{% endif %}
+            {% if ticket.estado == 2 %}bg-pink-200 bg-opacity-20 text-pink-500{% endif %}
+            {% if ticket.estado == 3 %}bg-green-200 bg-opacity-20 text-green-500{% endif %}
+            {% if ticket.estado == 4 %}bg-yellow-200 bg-opacity-20 text-yellow-500{% endif %}">
+                {{ ticket.get_estado_display }}
+            </span>
+            <span class="ml-2 px-3 py-1 rounded-full text-xs font-semibold
+            {% if ticket.prioridad == 1 %}bg-pink-200 bg-opacity-20 text-pink-500{% endif %}
+            {% if ticket.prioridad == 2 %}bg-orange-200 bg-opacity-20 text-orange-500{% endif %}
+            {% if ticket.prioridad == 3 %}bg-yellow-200 bg-opacity-20 text-yellow-500{% endif %}
+            {% if ticket.prioridad == 4 %}bg-green-200 bg-opacity-20 text-green-500{% endif %}">
+                {{ ticket.get_prioridad_display }}
+            </span>
         </div>
         
-        <div class="mt-4">
-            <h4 class="font-medium">Descripción:</h4>
-            <p class="text-gray-700 whitespace-pre-line">{{ ticket.description|default:"Sin descripción" }}</p>
-        </div>
-        
-        {% if ticket.adjunto %}
-        <div class="mt-4">
-            <h4 class="font-medium">Adjunto:</h4>
-            {% with ticket.adjunto.url|lower as file_url %}
-                {% if ".jpg" in file_url or ".jpeg" in file_url or ".png" in file_url or ".gif" in file_url %}
-                    <img src="{{ file_url }}" alt="Adjunto" class="w-64 h-auto rounded shadow-md mt-2">
-                {% elif ".pdf" in file_url %}
-                    <iframe src="{{ file_url }}" width="100%" height="300px" class="rounded shadow-md border mt-2"></iframe>
-                {% else %}
-                    <a href="{{ file_url }}" target="_blank" class="text-blue-500 underline mt-2 inline-block">Ver archivo adjunto</a>
+        <div class="flex flex-wrap gap-2">
+            {% if puede_editar %}
+                <a href="{% url 'helpdesk:ticket_update' ticket.id %}" class="inline-flex items-center px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-md text-sm transition-colors">
+                    <i class="fas fa-edit mr-2"></i> Editar
+                </a>
+            {% endif %}
+            
+            <!-- Acciones de cambio de estado (para soporte y administradores) -->
+            {% if ticket.estado != 2 and ticket.estado != 3 %}
+                {% if puede_cerrar and request.user.tipo_usuario == 1 %}
+                    <a href="{% url 'helpdesk:ticket_close' ticket.id %}" class="inline-flex items-center px-3 py-2 bg-pink-500 hover:bg-pink-600 text-white rounded-md text-sm transition-colors" onclick="return confirm('¿Estás seguro de cerrar este ticket? Un ticket cerrado indica que el proceso está completamente finalizado y no se espera más interacción.')">
+                        <i class="fas fa-times-circle mr-2"></i> Cerrar Ticket
+                    </a>
                 {% endif %}
-            {% endwith %}
-        {% endif %}
-    </div>
-    
-    <!-- Acciones -->
-    <div class="flex flex-wrap gap-2">
-        {% if puede_editar %}
-            <a href="{% url 'helpdesk:ticket_update' ticket.id %}" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm">Editar</a>
-        {% endif %}
-        
-        <!-- Acciones de cambio de estado (para soporte y administradores) -->
-        {% if ticket.estado != 2 and ticket.estado != 3 %}
-            {% if puede_cerrar and request.user.tipo_usuario == 1 %}
-                <a href="{% url 'helpdesk:ticket_close' ticket.id %}" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('¿Estás seguro de cerrar este ticket? Un ticket cerrado indica que el proceso está completamente finalizado y no se espera más interacción.')">Cerrar Ticket</a>
+                
+                {% if puede_resolver %}
+                    <a href="{% url 'helpdesk:ticket_resolve' ticket.id %}" class="inline-flex items-center px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm transition-colors" onclick="return confirm('¿Estás seguro de marcar como resuelto este ticket? Un ticket resuelto indica que el problema fue atendido pero espera confirmación del cliente.')">
+                        <i class="fas fa-check-circle mr-2"></i> Marcar Resuelto
+                    </a>
+                {% endif %}
             {% endif %}
             
-            {% if puede_resolver %}
-                <a href="{% url 'helpdesk:ticket_resolve' ticket.id %}" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('¿Estás seguro de marcar como resuelto este ticket? Un ticket resuelto indica que el problema fue atendido pero espera confirmación del cliente.')">Marcar como Resuelto</a>
+            <!-- Botón de reapertura (con diferentes mensajes según el estado) -->
+            {% if puede_reabrir %}
+                {% if es_ticket_resuelto %}
+                    <a href="{% url 'helpdesk:ticket_reopen' ticket.id %}" class="inline-flex items-center px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-sm transition-colors" onclick="return confirm('¿Estás seguro de reabrir este ticket? Esto indicará que el problema no ha sido resuelto completamente.')">
+                        <i class="fas fa-redo-alt mr-2"></i> Reabrir Ticket
+                    </a>
+                {% elif es_ticket_cerrado and request.user.tipo_usuario == 1 %}
+                    <a href="{% url 'helpdesk:ticket_reopen' ticket.id %}" class="inline-flex items-center px-3 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md text-sm transition-colors" onclick="return confirm('¿Estás seguro de reabrir este ticket cerrado? Esta acción solo debe realizarse en circunstancias excepcionales.')">
+                        <i class="fas fa-redo-alt mr-2"></i> Reabrir (Admin)
+                    </a>
+                {% endif %}
             {% endif %}
-        {% endif %}
-        
-        <!-- Botón de reapertura (con diferentes mensajes según el estado) -->
-        {% if puede_reabrir %}
-            {% if es_ticket_resuelto %}
-                <a href="{% url 'helpdesk:ticket_reopen' ticket.id %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('¿Estás seguro de reabrir este ticket? Esto indicará que el problema no ha sido resuelto completamente.')">Reabrir Ticket</a>
-            {% elif es_ticket_cerrado and request.user.tipo_usuario == 1 %}
-                <a href="{% url 'helpdesk:ticket_reopen' ticket.id %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-sm" onclick="return confirm('¿Estás seguro de reabrir este ticket cerrado? Esta acción solo debe realizarse en circunstancias excepcionales.')">Reabrir Ticket (Admin)</a>
-            {% endif %}
-        {% endif %}
-        
-        <!-- Mensajes informativos sobre estados -->
-        {% if es_ticket_cerrado and es_solicitante and request.user.tipo_usuario == 3 %}
-            <div class="bg-gray-100 text-gray-700 px-3 py-1 rounded text-xs inline-flex items-center">
-                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Este ticket está cerrado y no puede reabrirse
-            </div>
-        {% endif %}
-        
-        <!-- Botón para ver historial -->
-        <button type="button" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded text-sm" onclick="document.getElementById('historialModal').classList.remove('hidden')">Ver Historial</button>
-        
-        <a href="{% url 'helpdesk:ticket_list' %}" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-3 py-1 rounded text-sm">Volver</a>
+            
+            <!-- Botón para ver historial -->
+            <button type="button" class="inline-flex items-center px-3 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-md text-sm transition-colors" onclick="document.getElementById('historialModal').classList.remove('hidden')">
+                <i class="fas fa-history mr-2"></i> Ver Historial
+            </button>
+            
+            <a href="{% url 'helpdesk:ticket_list' %}" class="inline-flex items-center px-3 py-2 bg-dark-tertiary hover:bg-dark-secondary text-secondary-500 rounded-md text-sm transition-colors">
+                <i class="fas fa-arrow-left mr-2"></i> Volver
+            </a>
+        </div>
     </div>
-    
-    <!-- Información sobre el estado del ticket -->
+
+    <!-- Mensajes informativos sobre estados -->
     {% if ticket.estado == 3 %}
-    <div class="mt-2 bg-blue-50 p-2 rounded border border-blue-200 text-sm">
-        <p class="flex items-center text-blue-700">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <strong>Ticket Resuelto:</strong> Este ticket ha sido marcado como resuelto. Si el problema persiste, puedes reabrirlo.
+    <div class="bg-blue-900 bg-opacity-20 p-4 rounded-lg border border-blue-800 text-sm">
+        <p class="flex items-center text-blue-500">
+            <i class="fas fa-info-circle text-xl mr-3"></i>
+            <span><strong>Ticket Resuelto:</strong> Este ticket ha sido marcado como resuelto. Si el problema persiste, puedes reabrirlo.</span>
         </p>
     </div>
     {% elif ticket.estado == 2 %}
-    <div class="mt-2 bg-red-50 p-2 rounded border border-red-200 text-sm">
-        <p class="flex items-center text-red-700">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-            </svg>
-            <strong>Ticket Cerrado:</strong> Este ticket está completamente cerrado y normalmente no puede reabrirse. Para problemas similares, crea un nuevo ticket.
+    <div class="bg-pink-900 bg-opacity-20 p-4 rounded-lg border border-pink-800 text-sm">
+        <p class="flex items-center text-pink-500">
+            <i class="fas fa-exclamation-circle text-xl mr-3"></i>
+            <span><strong>Ticket Cerrado:</strong> Este ticket está completamente cerrado y normalmente no puede reabrirse. Para problemas similares, crea un nuevo ticket.</span>
         </p>
     </div>
     {% endif %}
     
     <!-- Información sobre la política de gestión de tickets para soporte/administradores -->
     {% if mostrar_mensaje_politica and ticket.estado == 1 %}
-    <div class="mt-2 bg-yellow-50 p-2 rounded border border-yellow-200 text-sm">
-        <p class="flex items-center text-yellow-700">
-            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <strong>Política de gestión:</strong> 
-            {% if es_soporte %}
-            Como agente de soporte, puedes marcar este ticket como <span class="font-semibold text-green-600">Resuelto</span> una vez atendido. Solo los administradores pueden <span class="font-semibold text-red-600">Cerrar</span> tickets.
-            {% elif es_administrador %}
-            Como administrador, puedes marcar este ticket como <span class="font-semibold text-green-600">Resuelto</span> o <span class="font-semibold text-red-600">Cerrado</span>. Recuerda que solo los tickets resueltos pueden ser reabiertos por los clientes.
-            {% endif %}
+    <div class="bg-yellow-900 bg-opacity-20 p-4 rounded-lg border border-yellow-800 text-sm">
+        <p class="flex items-center text-yellow-500">
+            <i class="fas fa-lightbulb text-xl mr-3"></i>
+            <span>
+                <strong>Política de gestión:</strong> 
+                {% if es_soporte %}
+                Como agente de soporte, puedes marcar este ticket como <span class="font-semibold text-green-500">Resuelto</span> una vez atendido. Solo los administradores pueden <span class="font-semibold text-pink-500">Cerrar</span> tickets.
+                {% elif es_administrador %}
+                Como administrador, puedes marcar este ticket como <span class="font-semibold text-green-500">Resuelto</span> o <span class="font-semibold text-pink-500">Cerrado</span>. Recuerda que solo los tickets resueltos pueden ser reabiertos por los clientes.
+                {% endif %}
+            </span>
         </p>
     </div>
     {% endif %}
     
+    <!-- Información del ticket -->
+    <div class="bg-dark-tertiary shadow-md rounded-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-primary-200 to-primary-100 bg-opacity-20 px-6 py-4">
+            <h3 class="text-lg font-semibold text-primary-500">Información del Ticket</h3>
+        </div>
+        
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-1">Detalles básicos</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <span class="block text-xs text-secondary-400">Código</span>
+                                <span class="font-medium text-secondary-500">{{ ticket.code }}</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs text-secondary-400">Tipo</span>
+                                <span class="font-medium text-secondary-500">{{ ticket.tipo.nombre }}</span>
+                            </div>
+                            <div>
+                                <span class="block text-xs text-secondary-400">Creado</span>
+                                <span class="font-medium text-secondary-500">{{ ticket.created_at|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            {% if ticket.close_date %}
+                            <div>
+                                <span class="block text-xs text-secondary-400">Cerrado</span>
+                                <span class="font-medium text-secondary-500">{{ ticket.close_date|date:"d/m/Y H:i" }}</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-1">Descripción</h4>
+                        <p class="text-secondary-500 bg-dark-secondary p-3 rounded-md whitespace-pre-line">{{ ticket.description|default:"Sin descripción" }}</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-1">Asignación</h4>
+                        {% if asignaciones %}
+                        <div class="flex flex-col space-y-2">
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-primary-200 bg-opacity-20 flex items-center justify-center text-primary-500 mr-2">
+                                    <i class="fas fa-user"></i>
+                                </div>
+                                <div>
+                                    <span class="block text-xs text-secondary-400">Solicitante</span>
+                                    <span class="font-medium text-secondary-500">{{ asignaciones.0.solicitante.username }}</span>
+                                </div>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-8 h-8 rounded-full bg-blue-200 bg-opacity-20 flex items-center justify-center text-blue-500 mr-2">
+                                    <i class="fas fa-headset"></i>
+                                </div>
+                                <div>
+                                    <span class="block text-xs text-secondary-400">Agente asignado</span>
+                                    <span class="font-medium text-secondary-500">{{ asignaciones.0.agente.username }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <p class="text-secondary-400 italic">No hay asignaciones</p>
+                        {% endif %}
+                    </div>
+                    
+                    {% if ticket.calificacion != 3 %}
+                    <div>
+                        <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-1">Calificación</h4>
+                        <div class="flex items-center">
+                            <div class="flex">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= ticket.calificacion %}
+                                        <i class="fas fa-star text-yellow-500"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-secondary-400"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <span class="ml-2 text-sm font-medium text-secondary-500">{{ ticket.get_calificacion_display }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if ticket.adjunto %}
+                    <div>
+                        <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-1">Archivo adjunto</h4>
+                        {% with ticket.adjunto.url|lower as file_url %}
+                            {% if ".jpg" in file_url or ".jpeg" in file_url or ".png" in file_url or ".gif" in file_url %}
+                                <div class="relative">
+                                    <img src="{{ file_url }}" alt="Adjunto" class="w-full h-auto rounded-md shadow-sm mt-2 hover:opacity-90 transition-opacity">
+                                    <a href="{{ file_url }}" target="_blank" class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70">
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                </div>
+                            {% elif ".pdf" in file_url %}
+                                <div class="border rounded-md overflow-hidden shadow-sm border-dark-tertiary">
+                                    <div class="bg-dark-secondary p-2 flex justify-between items-center">
+                                        <span class="text-sm font-medium text-secondary-500">Documento PDF</span>
+                                        <a href="{{ file_url }}" target="_blank" class="text-primary-500 hover:text-primary-400">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    </div>
+                                    <iframe src="{{ file_url }}" width="100%" height="200px" class="border-t border-dark-tertiary"></iframe>
+                                </div>
+                            {% else %}
+                                <a href="{{ file_url }}" target="_blank" class="flex items-center p-3 bg-dark-secondary hover:bg-dark-primary rounded-md border border-dark-tertiary transition-colors">
+                                    <i class="fas fa-file-alt text-secondary-500 mr-2"></i>
+                                    <span class="text-secondary-500">Ver archivo adjunto</span>
+                                    <i class="fas fa-external-link-alt ml-auto text-secondary-400"></i>
+                                </a>
+                            {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Sistema de calificación -->
     {% if puede_calificar and ticket.calificacion == 3 %}
-    <div class="bg-white shadow rounded p-4">
-        <h3 class="text-lg font-semibold mb-2">Calificar Servicio</h3>
-        <form method="post" action="{% url 'helpdesk:ticket_rate' ticket.id %}">
-            {% csrf_token %}
-            <div class="flex space-x-4 mb-2">
-                {% for opcion in calificacion_opciones %}
-                <label class="flex items-center space-x-1 cursor-pointer">
-                    <input type="radio" name="calificacion" value="{{ opcion.0 }}" class="form-radio" required>
-                    <span>{{ opcion.1 }}</span>
-                </label>
-                {% endfor %}
-            </div>
-            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm">Enviar Calificación</button>
-        </form>
+    <div class="bg-dark-tertiary shadow-md rounded-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-green-600 to-green-700 bg-opacity-20 px-6 py-4">
+            <h3 class="text-lg font-semibold text-green-500">Calificar Servicio</h3>
+        </div>
+        <div class="p-6">
+            <form method="post" action="{% url 'helpdesk:ticket_rate' ticket.id %}" class="space-y-4">
+                {% csrf_token %}
+                <div class="flex flex-wrap gap-6">
+                    {% for opcion in calificacion_opciones %}
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="radio" name="calificacion" value="{{ opcion.0 }}" class="form-radio h-5 w-5 text-green-600" required>
+                        <span class="text-secondary-500">{{ opcion.1 }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm transition-colors shadow-sm">
+                    <i class="fas fa-star mr-2"></i> Enviar Calificación
+                </button>
+            </form>
+        </div>
     </div>
     {% endif %}
     
     <!-- Interacciones/Mensajes -->
-    <div class="bg-white shadow rounded p-4">
-        <h3 class="text-lg font-semibold mb-2">Mensajes</h3>
+    <div class="bg-dark-tertiary shadow-md rounded-lg overflow-hidden">
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 bg-opacity-20 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-blue-500">Mensajes</h3>
+            <span class="bg-blue-200 bg-opacity-20 text-blue-500 px-2 py-1 rounded-full text-xs font-semibold">{{ interacciones|length }}</span>
+        </div>
         
         <!-- Lista de mensajes -->
-        <div class="space-y-4 mb-4">
-            {% if interacciones %}
-                {% for mensaje in interacciones %}
-                <div class="rounded p-3 {% if mensaje.es_agente %}bg-blue-50 ml-8{% else %}bg-gray-50 mr-8{% endif %}">
-                    <div class="flex justify-between items-center mb-1">
-                        <div class="font-medium {% if mensaje.es_agente %}text-blue-700{% else %}text-gray-700{% endif %}">
-                            {{ mensaje.usuario.username }}
-                            <!-- Mostrar el rol específico del usuario -->
-                            {% if mensaje.es_agente %}
-                                <span class="text-xs {% if mensaje.rol_usuario == 'Administrador' %}bg-purple-200 text-purple-800{% else %}bg-blue-200 text-blue-800{% endif %} px-2 py-0.5 rounded-full ml-2">
-                                    {{ mensaje.rol_usuario }}
-                                </span>
-                            {% else %}
-                                <span class="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full ml-2">
-                                    {{ mensaje.rol_usuario }}
-                                </span>
-                            {% endif %}
+        <div class="p-6">
+            <div class="space-y-6 mb-6">
+                {% if interacciones %}
+                    {% for mensaje in interacciones %}
+                    <div class="flex {% if mensaje.es_agente %}justify-end{% endif %}">
+                        <div class="rounded-lg p-4 max-w-lg {% if mensaje.es_agente %}bg-primary-200 bg-opacity-20 border-l-4 border-primary-500{% else %}bg-dark-secondary border-l-4 border-secondary-500{% endif %}">
+                            <div class="flex justify-between items-center mb-2">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center text-white mr-2
+                                        {% if mensaje.rol_usuario == 'Administrador' %}bg-purple-600{% elif mensaje.rol_usuario == 'Soporte' %}bg-blue-600{% else %}bg-green-600{% endif %}">
+                                        {{ mensaje.usuario.username|first|upper }}
+                                    </div>
+                                    <div>
+                                        <span class="font-medium block text-secondary-500">{{ mensaje.usuario.username }}</span>
+                                        <span class="text-xs inline-block px-2 py-0.5 rounded-full
+                                            {% if mensaje.rol_usuario == 'Administrador' %}bg-purple-200 bg-opacity-20 text-purple-500
+                                            {% elif mensaje.rol_usuario == 'Soporte' %}bg-blue-200 bg-opacity-20 text-blue-500
+                                            {% else %}bg-green-200 bg-opacity-20 text-green-500{% endif %}">
+                                            {{ mensaje.rol_usuario }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-secondary-400">{{ mensaje.created_at|date:"d/m/Y H:i" }}</div>
+                            </div>
+                            <p class="text-secondary-500 whitespace-pre-line">{{ mensaje.mensaje }}</p>
                         </div>
-                        <div class="text-xs text-gray-500">{{ mensaje.created_at|date:"d/m/Y H:i" }}</div>
                     </div>
-                    <p class="text-gray-700 whitespace-pre-line">{{ mensaje.mensaje }}</p>
-                </div>
-                {% endfor %}
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-8">
+                        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-200 bg-opacity-20 text-blue-500 mb-4">
+                            <i class="fas fa-comments text-2xl"></i>
+                        </div>
+                        <p class="text-secondary-500">No hay mensajes aún</p>
+                        <p class="text-sm text-secondary-400">Sé el primero en responder a este ticket</p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Formulario de mensajes -->
+            {% if ticket.estado != 2 and ticket.estado != 3 %}
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm transition-colors">
+                    <i class="fas fa-paper-plane mr-2"></i> Enviar Mensaje
+                </button>
+            </form>
             {% else %}
-                <p class="text-gray-500 italic">No hay mensajes aún</p>
+            <div class="bg-dark-secondary p-4 rounded-lg flex items-center text-secondary-500">
+                <i class="fas fa-lock mr-3 text-secondary-400"></i>
+                <p class="text-sm">Este ticket está cerrado y no se pueden añadir más mensajes.</p>
+            </div>
             {% endif %}
         </div>
-        
-        <!-- Formulario de mensajes -->
-        {% if ticket.estado != 2 and ticket.estado != 3 %}
-        <form method="post" class="space-y-2">
-            {% csrf_token %}
-            {{ form|crispy }}
-            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">Enviar Mensaje</button>
-        </form>
-        {% else %}
-        <div class="bg-gray-100 p-3 rounded">
-            <p class="text-gray-600 text-sm">Este ticket está cerrado y no se pueden añadir más mensajes.</p>
-        </div>
-        {% endif %}
     </div>
 </div>
 
 <!-- Modal para historial de cambios -->
 <div id="historialModal" class="fixed inset-0 bg-transparent backdrop-blur-sm hidden flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[80vh] overflow-y-auto">
-        <div class="p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-semibold">Historial de Cambios</h3>
-                <button type="button" class="text-gray-500 hover:text-gray-700" onclick="document.getElementById('historialModal').classList.add('hidden')">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            
+    <div class="bg-dark-tertiary rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
+        <div class="bg-gradient-to-r from-purple-600 to-purple-700 bg-opacity-20 px-6 py-4 flex justify-between items-center">
+            <h3 class="text-lg font-semibold text-purple-500">Historial de Cambios</h3>
+            <button type="button" class="text-secondary-500 hover:text-secondary-400" onclick="document.getElementById('historialModal').classList.add('hidden')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        
+        <div class="p-6 overflow-y-auto max-h-[calc(80vh-4rem)]">
             {% if historial %}
-            <div class="space-y-4">
-                {% for cambio in historial %}
-                <div class="border-b pb-4 last:border-b-0">
-                    <div class="flex justify-between">
-                        <span class="font-medium">{{ cambio.created_at|date:"d/m/Y H:i" }}</span>
-                        <span class="text-gray-500 text-sm">por {{ cambio.usuario.username }}</span>
-                    </div>
-                    <p class="text-sm my-1">
-                        {{ cambio.descripcion|default:"" }}
-                    </p>
-                    {% if cambio.valor_anterior != cambio.valor_nuevo and cambio.campo_modificado != 'interaccion' %}
-                    <div class="grid grid-cols-2 text-xs mt-2 text-gray-600 bg-gray-50 p-2 rounded">
-                        <div>
-                            <span class="font-semibold">Antes:</span> 
-                            <span class="font-mono">{{ cambio.valor_anterior|default:"-" }}</span>
+            <div class="relative">
+                <!-- Línea de tiempo vertical -->
+                <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-dark-secondary"></div>
+                
+                <div class="space-y-6">
+                    {% for cambio in historial %}
+                    <div class="relative pl-10">
+                        <!-- Indicador de tiempo -->
+                        <div class="absolute left-0 top-1 w-8 h-8 rounded-full bg-purple-200 bg-opacity-20 border-4 border-dark-tertiary shadow flex items-center justify-center text-purple-500 z-10">
+                            <i class="fas fa-history text-sm"></i>
                         </div>
-                        <div>
-                            <span class="font-semibold">Después:</span> 
-                            <span class="font-mono">{{ cambio.valor_nuevo|default:"-" }}</span>
+                        
+                        <div class="bg-dark-secondary rounded-lg border border-dark-tertiary p-4 shadow-sm">
+                            <div class="flex justify-between mb-2">
+                                <span class="font-medium text-secondary-500">{{ cambio.created_at|date:"d/m/Y H:i" }}</span>
+                                <span class="text-sm text-secondary-400">por {{ cambio.usuario.username }}</span>
+                            </div>
+                            <p class="text-sm text-secondary-500 mb-2">
+                                {{ cambio.descripcion|default:"" }}
+                            </p>
+                            {% if cambio.valor_anterior != cambio.valor_nuevo and cambio.campo_modificado != 'interaccion' %}
+                            <div class="grid grid-cols-2 gap-4 bg-dark-primary p-3 rounded-md text-sm">
+                                <div>
+                                    <span class="font-semibold text-secondary-400 block mb-1">Antes:</span> 
+                                    <span class="font-mono bg-pink-900 bg-opacity-20 text-pink-500 px-2 py-1 rounded">{{ cambio.valor_anterior|default:"-" }}</span>
+                                </div>
+                                <div>
+                                    <span class="font-semibold text-secondary-400 block mb-1">Después:</span> 
+                                    <span class="font-mono bg-green-900 bg-opacity-20 text-green-500 px-2 py-1 rounded">{{ cambio.valor_nuevo|default:"-" }}</span>
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endif %}
+                    {% endfor %}
                 </div>
-                {% endfor %}
             </div>
             {% else %}
-            <p class="text-gray-500 italic">No hay historial de cambios</p>
-            {% endif %}
-            
-            <div class="mt-6 text-right">
-                <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded" onclick="document.getElementById('historialModal').classList.add('hidden')">
-                    Cerrar
-                </button>
+            <div class="text-center py-8">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-dark-secondary text-secondary-400 mb-4">
+                    <i class="fas fa-history text-2xl"></i>
+                </div>
+                <p class="text-secondary-500">No hay historial de cambios</p>
             </div>
+            {% endif %}
+        </div>
+        
+        <div class="border-t border-dark-tertiary px-6 py-4 bg-dark-secondary flex justify-end">
+            <button type="button" class="inline-flex items-center px-4 py-2 bg-dark-tertiary hover:bg-dark-primary text-secondary-500 rounded-md transition-colors" onclick="document.getElementById('historialModal').classList.add('hidden')">
+                <i class="fas fa-times mr-2"></i> Cerrar
+            </button>
         </div>
     </div>
 </div>

@@ -5,6 +5,8 @@ app_name = 'helpdesk'
 
 urlpatterns = [
     path('', index_view, name='home'),
+    path('dashboard/', dashboard_view, name='dashboard'),
+    path('reportes/', reports_view, name='reports'),
     path('tickets/', ticket_list, name='ticket_list'),
     path('nuevo/', ticket_create, name='ticket_create'),
     path('<int:pk>/', ticket_detail, name='ticket_detail'),

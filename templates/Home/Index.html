@@ -3,30 +3,113 @@
 {% block title %}Bienvenidos{% endblock %}
 
 {% block content %}
-<div class="flex min-h-screen bg-gray-100">
+<div class="flex h-screen bg-dark-primary" x-data="{ sidebarOpen: true }">
     <!-- Sidebar -->
-    <aside class="w-64 bg-white shadow-lg">
-        <div class="p-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-800">Menú</h2>
+    <aside class="relative z-10" :class="sidebarOpen ? 'w-64' : 'w-20'" 
+           class="transition-all duration-300 ease-in-out bg-dark-secondary shadow-lg flex flex-col">
+        <!-- Logo y header -->
+        <div class="flex items-center justify-between h-16 px-4 border-b border-dark-tertiary">
+            <div class="flex items-center">
+                <img src="https://tailwindui.com/img/logos/workflow-mark-indigo-600.svg" class="h-8 w-8" alt="Logo">
+                <span class="ml-2 text-lg font-semibold text-secondary-600" x-show="sidebarOpen">HelpDesk</span>
+            </div>
+            <button @click="sidebarOpen = !sidebarOpen" class="p-1 rounded-md hover:bg-dark-tertiary">
+                <svg class="w-6 h-6 text-secondary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"></path>
+                </svg>
+            </button>
         </div>
-        <nav class="p-4 space-y-2">
-            <a href="#" class="block text-gray-700 hover:text-blue-500">Inicio</a>
-            <a href="{% url 'helpdesk:ticket_list' %}" class="block text-gray-700 hover:text-blue-500">Tickets</a>
-            <a href="#" class="block text-gray-700 hover:text-blue-500">Usuarios</a>
-            <a href="#" class="block text-gray-700 hover:text-blue-500">Reportes</a>
-            <a href="#" class="block text-gray-700 hover:text-blue-500">Configuración</a>
-            <a href="{% url 'users:logout' %}" class="block text-gray-700 hover:text-blue-500">Logout</a>
+        
+        <!-- Links de navegación -->
+        <nav class="flex-1 py-4 overflow-y-auto">
+            <ul class="space-y-1 px-2">
+                {% if request.user.tipo_usuario == 1 or request.user.tipo_usuario == 2 %}
+                <!-- Dashboard (solo visible para soporte y administrador) -->
+                <li>
+                    <a href="{% url 'helpdesk:dashboard' %}" class="flex items-center py-2 px-3 text-secondary-500 hover:bg-dark-tertiary hover:text-primary-600 rounded-md group transition-all">
+                        <i class="fas fa-home w-6 h-6 text-secondary-400 group-hover:text-primary-500"></i>
+                        <span class="ml-3" x-show="sidebarOpen">Dashboard</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Tickets (visible para todos) -->
+                <li>
+                    <a href="{% url 'helpdesk:ticket_list' %}" class="flex items-center py-2 px-3 text-secondary-500 hover:bg-dark-tertiary hover:text-primary-600 rounded-md group transition-all">
+                        <i class="fas fa-ticket-alt w-6 h-6 text-secondary-400 group-hover:text-primary-500"></i>
+                        <span class="ml-3" x-show="sidebarOpen">Tickets</span>
+                    </a>
+                </li>
+                
+                <!-- Reportes (solo visible para administrador) -->
+                {% if request.user.tipo_usuario == 1 %}
+                <li>
+                    <a href="{% url 'helpdesk:reports' %}" class="flex items-center py-2 px-3 text-secondary-500 hover:bg-dark-tertiary hover:text-primary-600 rounded-md group transition-all">
+                        <i class="fas fa-chart-bar w-6 h-6 text-secondary-400 group-hover:text-primary-500"></i>
+                        <span class="ml-3" x-show="sidebarOpen">Reportes</span>
+                    </a>
+                </li>
+                {% endif %}
+                
+                <!-- Configuración (solo visible para administrador) -->
+                {% if request.user.tipo_usuario == 1 %}
+                <li>
+                    <a href="/admin/" class="flex items-center py-2 px-3 text-secondary-500 hover:bg-dark-tertiary hover:text-primary-600 rounded-md group transition-all">
+                        <i class="fas fa-cog w-6 h-6 text-secondary-400 group-hover:text-primary-500"></i>
+                        <span class="ml-3" x-show="sidebarOpen">Configuración</span>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
         </nav>
+        
+        <!-- Footer del sidebar -->
+        <div class="border-t border-dark-tertiary py-4 px-3">
+            <a href="{% url 'users:logout' %}" class="flex items-center text-secondary-500 hover:text-primary-600 group transition-all">
+                <i class="fas fa-sign-out-alt w-6 h-6 text-secondary-400 group-hover:text-primary-500"></i>
+                <span class="ml-3" x-show="sidebarOpen">Cerrar sesión</span>
+            </a>
+        </div>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 p-6">
-        <div class="bg-white rounded-lg shadow-md">
-            <div class="px-6 py-4 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-800">{% block panel_title %}Panel{% endblock %}</h3>
-            </div>
-            <div class="p-6">
-                {% block panel_content %}{% endblock %}
+    <main class="flex-1 overflow-x-hidden overflow-y-auto bg-dark-primary">
+        <div class="container mx-auto px-6 py-8">
+            <div class="bg-dark-secondary rounded-lg shadow-md">
+                <div class="px-6 py-4 border-b border-dark-tertiary flex justify-between items-center">
+                    <h3 class="text-xl font-semibold text-secondary-600">{% block panel_title %}Panel{% endblock %}</h3>
+                    <div class="flex items-center space-x-4">
+                        <!-- Nombre de usuario y rol -->
+                        <div class="flex flex-col items-end mr-4">
+                            <span class="text-sm font-medium text-secondary-500">{{ request.user.username }}</span>
+                            <span class="text-xs text-secondary-400">
+                                {% if request.user.tipo_usuario == 1 %}
+                                    Administrador
+                                {% elif request.user.tipo_usuario == 2 %}
+                                    Soporte
+                                {% else %}
+                                    Cliente
+                                {% endif %}
+                            </span>
+                        </div>
+                        
+                        <!-- Notificaciones -->
+                        <button class="p-1 rounded-full hover:bg-dark-tertiary relative">
+                            <i class="fas fa-bell text-secondary-500"></i>
+                            <span class="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+                        </button>
+                        
+                        <!-- Perfil -->
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white font-semibold">
+                                {{ request.user.username|first|upper }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    {% block panel_content %}{% endblock %}
+                </div>
             </div>
         </div>
     </main>

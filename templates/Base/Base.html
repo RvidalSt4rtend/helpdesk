@@ -1,30 +1,110 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HELPDESK{% endblock %}</title>
     {% load static %}
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Iconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Alpine.js para interactividad -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#172554',
+                            100: '#1e3a8a',
+                            200: '#1e40af',
+                            300: '#1d4ed8',
+                            400: '#2563eb',
+                            500: '#3b82f6',
+                            600: '#60a5fa',
+                            700: '#93c5fd',
+                            800: '#bfdbfe',
+                            900: '#dbeafe'
+                        },
+                        secondary: {
+                            50: '#18181b',
+                            100: '#27272a',
+                            200: '#3f3f46',
+                            300: '#52525b',
+                            400: '#71717a',
+                            500: '#a1a1aa',
+                            600: '#d4d4d8',
+                            700: '#e4e4e7',
+                            800: '#f4f4f5',
+                            900: '#fafafa'
+                        },
+                        dark: {
+                            primary: '#1e1e2d',
+                            secondary: '#252536',
+                            tertiary: '#2d2d44',
+                            accent: '#3b82f6'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #121212;
+            color: #e4e4e7;
+        }
+        
+        .transition-all {
+            transition: all 0.3s ease-in-out;
+        }
+        
+        /* Estilo para scrollbar personalizado */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #27272a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52525b;
+        }
+    </style>
+    
     {% block extra_css %}{% endblock %}
 </head>
-<body class="bg-gray-100 text-gray-800">
-    <!-- Puedes agregar un header si lo necesitas -->
-    <header>
-        <nav>
-            <!-- Tu navegación global aquí (opcional) -->
-        </nav>
-    </header>
-
-    <!-- Aquí cargamos el layout principal de cada página -->
+<body class="bg-dark-primary text-secondary-700">
     {% block content %}{% endblock %}
 
-    <footer class="mt-10 text-center text-sm text-gray-500">
-        <!-- Footer simple -->
-        © 2025 HelpDesk. Todos los derechos reservados.
+    <footer class="py-6 text-center text-sm text-secondary-500 bg-dark-secondary shadow-inner mt-auto">
+        <div class="container mx-auto">
+            <p>© 2025 HelpDesk System. Todos los derechos reservados.</p>
+        </div>
     </footer>
 
-    <script src="{% static 'js/main.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -20,72 +20,335 @@
 {% endblock %}
 
 {% block panel_content %}
-<a href="{% url 'helpdesk:ticket_create' %}" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mb-4 inline-block">Nuevo Ticket</a>
+<div class="space-y-6">
+  <!-- Barra superior con buscador y botones de acción -->
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <div class="flex-1 max-w-md">
+      <form method="get" action="{% url 'helpdesk:ticket_list' %}" id="search-form">
+        <div class="relative">
+          <input type="text" name="search" placeholder="Buscar tickets..." value="{{ filtros.search }}"
+                 class="w-full pl-10 pr-4 py-2 border border-dark-tertiary bg-dark-secondary rounded-lg text-secondary-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500">
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3">
+            <i class="fas fa-search text-secondary-400"></i>
+          </span>
+          <button type="submit" class="absolute inset-y-0 right-0 flex items-center pr-3">
+            <i class="fas fa-arrow-right text-secondary-400 hover:text-primary-500"></i>
+          </button>
+        </div>
+        
+        <!-- Campos ocultos para mantener otros filtros al buscar -->
+        {% if filtros.estado %}<input type="hidden" name="estado" value="{{ filtros.estado }}">{% endif %}
+        {% if filtros.prioridad %}<input type="hidden" name="prioridad" value="{{ filtros.prioridad }}">{% endif %}
+        {% if filtros.categoria %}<input type="hidden" name="categoria" value="{{ filtros.categoria }}">{% endif %}
+        {% if filtros.order_by %}<input type="hidden" name="order_by" value="{{ filtros.order_by }}">{% endif %}
+      </form>
+    </div>
+    
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'helpdesk:ticket_create' %}" class="inline-flex items-center px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg shadow-sm transition-all">
+        <i class="fas fa-plus mr-2"></i> Nuevo Ticket
+      </a>
+      
+      <button id="filter-button" class="inline-flex items-center px-4 py-2 bg-dark-tertiary border border-dark-tertiary hover:bg-dark-secondary text-secondary-500 rounded-lg shadow-sm transition-all">
+        <i class="fas fa-filter mr-2"></i> Filtrar
+      </button>
+    </div>
+  </div>
+  
+  <!-- Panel de filtros -->
+  <div id="filter-panel" class="bg-dark-tertiary rounded-lg p-4 {% if not filtros.estado and not filtros.prioridad and not filtros.categoria %}hidden{% endif %}">
+    <form method="get" action="{% url 'helpdesk:ticket_list' %}" id="filter-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <!-- Mantener búsqueda actual -->
+      {% if filtros.search %}<input type="hidden" name="search" value="{{ filtros.search }}">{% endif %}
+      
+      <!-- Filtro de Estado -->
+      <div>
+        <label for="estado" class="block text-sm font-medium text-secondary-500 mb-1">Estado</label>
+        <select name="estado" id="estado" class="w-full bg-dark-secondary border border-dark-tertiary rounded-md shadow-sm text-secondary-600 py-2 px-3">
+          <option value="">Todos</option>
+          {% for value, label in estados %}
+          <option value="{{ value }}" {% if filtros.estado == value|stringformat:"i" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <!-- Filtro de Prioridad -->
+      <div>
+        <label for="prioridad" class="block text-sm font-medium text-secondary-500 mb-1">Prioridad</label>
+        <select name="prioridad" id="prioridad" class="w-full bg-dark-secondary border border-dark-tertiary rounded-md shadow-sm text-secondary-600 py-2 px-3">
+          <option value="">Todas</option>
+          {% for value, label in prioridades %}
+          <option value="{{ value }}" {% if filtros.prioridad == value|stringformat:"i" %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <!-- Filtro de Categoría -->
+      <div>
+        <label for="categoria" class="block text-sm font-medium text-secondary-500 mb-1">Categoría</label>
+        <select name="categoria" id="categoria" class="w-full bg-dark-secondary border border-dark-tertiary rounded-md shadow-sm text-secondary-600 py-2 px-3">
+          <option value="">Todas</option>
+          {% for categoria in categorias %}
+          <option value="{{ categoria.id }}" {% if filtros.categoria == categoria.id|stringformat:"i" %}selected{% endif %}>{{ categoria.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <!-- Filtro de Ordenamiento -->
+      <div>
+        <label for="order_by" class="block text-sm font-medium text-secondary-500 mb-1">Ordenar por</label>
+        <select name="order_by" id="order_by" class="w-full bg-dark-secondary border border-dark-tertiary rounded-md shadow-sm text-secondary-600 py-2 px-3">
+          <option value="-created_at" {% if filtros.order_by == '-created_at' %}selected{% endif %}>Más recientes primero</option>
+          <option value="created_at" {% if filtros.order_by == 'created_at' %}selected{% endif %}>Más antiguos primero</option>
+          <option value="-prioridad" {% if filtros.order_by == '-prioridad' %}selected{% endif %}>Mayor prioridad</option>
+          <option value="prioridad" {% if filtros.order_by == 'prioridad' %}selected{% endif %}>Menor prioridad</option>
+          <option value="estado" {% if filtros.order_by == 'estado' %}selected{% endif %}>Por estado</option>
+        </select>
+      </div>
+      
+      <!-- Botones de acción -->
+      <div class="md:col-span-4 flex justify-end space-x-3">
+        <a href="{% url 'helpdesk:ticket_list' %}" class="inline-flex items-center px-4 py-2 bg-dark-secondary hover:bg-dark-primary text-secondary-500 rounded-lg shadow-sm transition-all">
+          <i class="fas fa-times mr-2"></i> Limpiar
+        </a>
+        <button type="submit" class="inline-flex items-center px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg shadow-sm transition-all">
+          <i class="fas fa-filter mr-2"></i> Aplicar Filtros
+        </button>
+      </div>
+    </form>
+  </div>
+  
+  <!-- Información sobre filtros activos -->
+  {% if filtros.search or filtros.estado or filtros.prioridad or filtros.categoria %}
+  <div class="bg-dark-tertiary rounded-lg p-3 flex items-center justify-between">
+    <div class="text-sm text-secondary-500">
+      <span class="font-medium">Filtros activos:</span>
+      {% if filtros.search %}<span class="ml-2 px-2 py-1 bg-dark-secondary rounded-md">Búsqueda: "{{ filtros.search }}"</span>{% endif %}
+      {% if filtros.estado %}
+        <span class="ml-2 px-2 py-1 bg-dark-secondary rounded-md">
+          Estado: 
+          {% for value, label in estados %}
+            {% if filtros.estado == value|stringformat:"i" %}{{ label }}{% endif %}
+          {% endfor %}
+        </span>
+      {% endif %}
+      {% if filtros.prioridad %}
+        <span class="ml-2 px-2 py-1 bg-dark-secondary rounded-md">
+          Prioridad: 
+          {% for value, label in prioridades %}
+            {% if filtros.prioridad == value|stringformat:"i" %}{{ label }}{% endif %}
+          {% endfor %}
+        </span>
+      {% endif %}
+      {% if filtros.categoria %}
+        <span class="ml-2 px-2 py-1 bg-dark-secondary rounded-md">
+          Categoría: 
+          {% for cat in categorias %}
+            {% if filtros.categoria == cat.id|stringformat:"i" %}{{ cat.nombre }}{% endif %}
+          {% endfor %}
+        </span>
+      {% endif %}
+    </div>
+    <a href="{% url 'helpdesk:ticket_list' %}" class="text-sm text-primary-500 hover:text-primary-400">
+      <i class="fas fa-times-circle mr-1"></i> Limpiar todos
+    </a>
+  </div>
+  {% endif %}
 
-<table class="min-w-full bg-white rounded shadow overflow-hidden">
-    <thead>
-        <tr class="bg-gray-100 text-left">
-            <th class="py-2 px-4">Código</th>
-            <th class="py-2 px-4">Título</th>
-            <th class="py-2 px-4">Estado</th>
-            <th class="py-2 px-4">Prioridad</th>
+  <!-- Tabla de tickets -->
+  <div class="bg-dark-tertiary rounded-lg shadow overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-dark-secondary">
+        <thead class="bg-dark-secondary bg-opacity-70">
+          <tr>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Código</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Fecha</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Título</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Estado</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Prioridad</th>
             {% if es_administrador or es_soporte %}
-            <th class="py-2 px-4">Tipo</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Tipo</th>
             {% endif %}
             {% if es_administrador %}
-            <th class="py-2 px-4">Solicitante</th>
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Solicitante</th>
+            {% elif not es_soporte %}
+            <!-- Para clientes, mostrar el agente asignado -->
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Agente Asignado</th>
             {% endif %}
-            {% if es_administrador or es_soporte %}
-            <th class="py-2 px-4">Fecha</th>
-            {% endif %}
-            <th class="py-2 px-4">Acciones</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for ticket in tickets %}
-        <tr class="border-b">
-            <td class="py-2 px-4">{{ ticket.code }}</td>
-            <td class="py-2 px-4">{{ ticket.title }}</td>
-            <td class="py-2 px-4">
-                <span class="px-2 py-1 rounded-full text-xs 
-                {% if ticket.estado == 1 %}bg-green-100 text-green-800{% endif %}
-                {% if ticket.estado == 2 %}bg-red-100 text-red-800{% endif %}
-                {% if ticket.estado == 3 %}bg-blue-100 text-blue-800{% endif %}
-                {% if ticket.estado == 4 %}bg-yellow-100 text-yellow-800{% endif %}">
-                    {{ ticket.get_estado_display }}
-                </span>
+            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-secondary-500 uppercase tracking-wider">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-dark-secondary">
+          {% for ticket in page_obj %}
+          <tr class="hover:bg-dark-secondary hover:bg-opacity-50 transition-colors">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-secondary-600">{{ ticket.code }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">{{ ticket.title }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+              {% if ticket.estado == 1 %}bg-primary-200 bg-opacity-20 text-primary-500{% endif %}
+              {% if ticket.estado == 2 %}bg-pink-200 bg-opacity-20 text-pink-500{% endif %}
+              {% if ticket.estado == 3 %}bg-green-200 bg-opacity-20 text-green-500{% endif %}
+              {% if ticket.estado == 4 %}bg-yellow-200 bg-opacity-20 text-yellow-500{% endif %}">
+                {{ ticket.get_estado_display }}
+              </span>
             </td>
-            <td class="py-2 px-4">
-                <span class="px-2 py-1 rounded-full text-xs 
-                {% if ticket.prioridad == 1 %}bg-red-100 text-red-800{% endif %}
-                {% if ticket.prioridad == 2 %}bg-orange-100 text-orange-800{% endif %}
-                {% if ticket.prioridad == 3 %}bg-yellow-100 text-yellow-800{% endif %}
-                {% if ticket.prioridad == 4 %}bg-green-100 text-green-800{% endif %}">
-                    {{ ticket.get_prioridad_display }}
-                </span>
+            <td class="px-6 py-4 whitespace-nowrap">
+              <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+              {% if ticket.prioridad == 1 %}bg-pink-200 bg-opacity-20 text-pink-500{% endif %}
+              {% if ticket.prioridad == 2 %}bg-orange-200 bg-opacity-20 text-orange-500{% endif %}
+              {% if ticket.prioridad == 3 %}bg-yellow-200 bg-opacity-20 text-yellow-500{% endif %}
+              {% if ticket.prioridad == 4 %}bg-green-200 bg-opacity-20 text-green-500{% endif %}">
+                {{ ticket.get_prioridad_display }}
+              </span>
             </td>
             {% if es_administrador or es_soporte %}
-            <td class="py-2 px-4">{{ ticket.tipo.nombre }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">{{ ticket.tipo.nombre }}</td>
             {% endif %}
             {% if es_administrador %}
-            <td class="py-2 px-4">
-                {% for asignacion in ticket.asignaciones.all %}
-                    {% if forloop.first %}
-                        {{ asignacion.solicitante.username }}
-                    {% endif %}
-                {% endfor %}
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
+              {% for asignacion in ticket.asignaciones.all %}
+                {% if forloop.first %}
+                  {{ asignacion.solicitante.username }}
+                {% endif %}
+              {% endfor %}
+            </td>
+            {% elif not es_soporte %}
+            <!-- Para clientes, mostrar el agente asignado -->
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-secondary-500">
+              {% for asignacion in ticket.asignaciones.all %}
+                {% if forloop.first %}
+                  {% if asignacion.agente %}
+                    {{ asignacion.agente.username }}
+                  {% else %}
+                    <span class="text-secondary-400">Sin asignar</span>
+                  {% endif %}
+                {% endif %}
+              {% endfor %}
             </td>
             {% endif %}
-            {% if es_administrador or es_soporte %}
-            <td class="py-2 px-4">{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
-            {% endif %}
-            <td class="py-2 px-4">
-                <a href="{% url 'helpdesk:ticket_detail' ticket.id %}" class="text-blue-500 hover:underline">Ver</a>
+            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <a href="{% url 'helpdesk:ticket_detail' ticket.id %}" class="text-primary-500 hover:text-primary-400 mr-3">
+                <i class="fas fa-eye"></i> Ver
+              </a>
             </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="{% if es_administrador %}8{% elif es_soporte %}7{% else %}5{% endif %}" class="py-4 px-4 text-center text-gray-500">No hay tickets.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="{% if es_administrador %}8{% elif es_soporte %}7{% else %}8{% endif %}" class="px-6 py-10 text-center text-secondary-400">
+              <div class="flex flex-col items-center">
+                <i class="fas fa-ticket-alt text-4xl text-secondary-300 mb-3"></i>
+                <p class="text-lg text-secondary-500">No hay tickets disponibles</p>
+                <p class="text-sm text-secondary-400 mt-1">Crea un nuevo ticket para comenzar</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    
+    <!-- Paginación -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div class="bg-dark-tertiary px-4 py-3 flex items-center justify-between border-t border-dark-secondary sm:px-6">
+      <div class="flex-1 flex justify-between sm:hidden">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% for key, value in filtros.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+           class="relative inline-flex items-center px-4 py-2 border border-dark-tertiary text-sm font-medium rounded-md text-secondary-500 bg-dark-secondary hover:bg-dark-primary">
+          Anterior
+        </a>
+        {% else %}
+        <span class="relative inline-flex items-center px-4 py-2 border border-dark-tertiary text-sm font-medium rounded-md text-secondary-400 bg-dark-secondary opacity-50 cursor-not-allowed">
+          Anterior
+        </span>
+        {% endif %}
+        
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% for key, value in filtros.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}"
+           class="ml-3 relative inline-flex items-center px-4 py-2 border border-dark-tertiary text-sm font-medium rounded-md text-secondary-500 bg-dark-secondary hover:bg-dark-primary">
+          Siguiente
+        </a>
+        {% else %}
+        <span class="ml-3 relative inline-flex items-center px-4 py-2 border border-dark-tertiary text-sm font-medium rounded-md text-secondary-400 bg-dark-secondary opacity-50 cursor-not-allowed">
+          Siguiente
+        </span>
+        {% endif %}
+      </div>
+      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-secondary-500">
+            Mostrando <span class="font-medium">{{ page_obj.start_index }}</span> a <span class="font-medium">{{ page_obj.end_index }}</span> de <span class="font-medium">{{ tickets_count }}</span> resultados
+          </p>
+        </div>
+        <div>
+          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% for key, value in filtros.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-dark-tertiary bg-dark-secondary text-sm font-medium text-secondary-500 hover:bg-dark-primary">
+              <span class="sr-only">Anterior</span>
+              <i class="fas fa-chevron-left"></i>
+            </a>
+            {% else %}
+            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-dark-tertiary bg-dark-secondary text-sm font-medium text-secondary-400 opacity-50 cursor-not-allowed">
+              <span class="sr-only">Anterior</span>
+              <i class="fas fa-chevron-left"></i>
+            </span>
+            {% endif %}
+            
+            {% for i in page_obj.paginator.page_range %}
+              {% if page_obj.number == i %}
+              <span aria-current="page" class="z-10 bg-primary-200 bg-opacity-20 border-primary-500 text-primary-500 relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                {{ i }}
+              </span>
+              {% elif i > page_obj.number|add:"-3" and i < page_obj.number|add:"3" %}
+              <a href="?page={{ i }}{% for key, value in filtros.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+                 class="bg-dark-secondary border-dark-tertiary text-secondary-500 hover:bg-dark-primary relative inline-flex items-center px-4 py-2 border text-sm font-medium">
+                {{ i }}
+              </a>
+              {% elif i == page_obj.number|add:"-3" or i == page_obj.number|add:"3" %}
+              <span class="relative inline-flex items-center px-4 py-2 border border-dark-tertiary bg-dark-secondary text-sm font-medium text-secondary-500">
+                ...
+              </span>
+              {% endif %}
+            {% endfor %}
+            
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% for key, value in filtros.items %}{% if value and key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" 
+               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-dark-tertiary bg-dark-secondary text-sm font-medium text-secondary-500 hover:bg-dark-primary">
+              <span class="sr-only">Siguiente</span>
+              <i class="fas fa-chevron-right"></i>
+            </a>
+            {% else %}
+            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-dark-tertiary bg-dark-secondary text-sm font-medium text-secondary-400 opacity-50 cursor-not-allowed">
+              <span class="sr-only">Siguiente</span>
+              <i class="fas fa-chevron-right"></i>
+            </span>
+            {% endif %}
+          </nav>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Mostrar/ocultar panel de filtros
+    const filterButton = document.getElementById('filter-button');
+    const filterPanel = document.getElementById('filter-panel');
+    
+    filterButton.addEventListener('click', function() {
+      filterPanel.classList.toggle('hidden');
+    });
+    
+    // Aplicar filtros automáticamente al cambiar selects
+    const autoSubmitSelects = document.querySelectorAll('#order_by');
+    autoSubmitSelects.forEach(select => {
+      select.addEventListener('change', function() {
+        document.getElementById('filter-form').submit();
+      });
+    });
+  });
+</script>
 {% endblock %}

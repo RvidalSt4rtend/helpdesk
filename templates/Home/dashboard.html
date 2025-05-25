@@ -1,0 +1,604 @@
+{% extends 'Home/Index.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block panel_title %}
+    {% if es_administrador %}
+    Panel de Monitoreo (Administrador)
+    {% else %}
+    Mi Panel de Desempeño
+    {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Configuración global para gráficos en modo oscuro
+    Chart.defaults.color = '#a1a1aa';
+    Chart.defaults.borderColor = '#3f3f46';
+    
+    // Gráfico de tickets por categoría
+    const ctxCategorias = document.getElementById('grafico-categorias');
+    const datosCategorias = {{ datos_categorias_json|safe }};
+    
+    new Chart(ctxCategorias, {
+      type: 'pie',
+      data: {
+        labels: datosCategorias.labels,
+        datasets: [{
+          data: datosCategorias.data,
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.7)',  // primary-500
+            'rgba(168, 85, 247, 0.7)',  // purple
+            'rgba(236, 72, 153, 0.7)',  // pink
+            'rgba(251, 146, 60, 0.7)',  // orange
+            'rgba(34, 197, 94, 0.7)',   // green
+            'rgba(250, 204, 21, 0.7)',  // yellow
+            'rgba(103, 232, 249, 0.7)'  // cyan
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+          },
+          title: {
+            display: true,
+            text: 'Tickets por Categoría'
+          }
+        }
+      }
+    });
+    
+    // Gráfico de tickets por estado
+    const ctxEstados = document.getElementById('grafico-estados');
+    const datosEstados = {{ datos_estados_json|safe }};
+    
+    new Chart(ctxEstados, {
+      type: 'bar',
+      data: {
+        labels: datosEstados.labels,
+        datasets: [{
+          label: 'Tickets por Estado',
+          data: datosEstados.data,
+          backgroundColor: [
+            'rgba(59, 130, 246, 0.7)',  // blue
+            'rgba(34, 197, 94, 0.7)',   // green
+            'rgba(236, 72, 153, 0.7)',  // pink
+            'rgba(250, 204, 21, 0.7)'   // yellow
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: {
+              color: '#3f3f46'
+            }
+          },
+          x: {
+            grid: {
+              color: '#3f3f46'
+            }
+          }
+        }
+      }
+    });
+    
+    // Gráfico de tickets por prioridad
+    const ctxPrioridad = document.getElementById('grafico-prioridad');
+    const datosPrioridad = {{ datos_prioridad_json|safe }};
+    
+    new Chart(ctxPrioridad, {
+      type: 'doughnut',
+      data: {
+        labels: datosPrioridad.labels,
+        datasets: [{
+          data: datosPrioridad.data,
+          backgroundColor: [
+            'rgba(236, 72, 153, 0.7)',  // pink/critical
+            'rgba(251, 146, 60, 0.7)',  // orange/high
+            'rgba(250, 204, 21, 0.7)',  // yellow/medium
+            'rgba(34, 197, 94, 0.7)'    // green/low
+          ],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+          },
+          title: {
+            display: true,
+            text: 'Tickets por Prioridad'
+          }
+        }
+      }
+    });
+    
+    // Gráfico de rendimiento de agentes
+    {% if es_administrador %}
+    const ctxAgentes = document.getElementById('grafico-agentes');
+    const datosAgentes = {{ datos_agentes_json|safe }};
+    
+    new Chart(ctxAgentes, {
+      type: 'bar',
+      data: {
+        labels: datosAgentes.labels,
+        datasets: [{
+          label: 'Tickets Resueltos',
+          data: datosAgentes.data,
+          backgroundColor: 'rgba(59, 130, 246, 0.7)', // blue
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        scales: {
+          x: {
+            beginAtZero: true,
+            grid: {
+              color: '#3f3f46'
+            }
+          },
+          y: {
+            grid: {
+              color: '#3f3f46'
+            }
+          }
+        },
+        plugins: {
+          title: {
+            display: true,
+            text: 'Rendimiento por Agente'
+          }
+        }
+      }
+    });
+    {% endif %}
+  });
+</script>
+{% endblock %}
+
+{% block panel_content %}
+<div class="space-y-6">
+  <!-- Tarjetas de resumen -->
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4 border-l-4 border-primary-500">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full bg-primary-200 bg-opacity-20 mr-4">
+          <i class="fas fa-ticket-alt text-xl text-primary-500"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-secondary-500">Tickets Abiertos</p>
+          <p class="text-2xl font-bold text-secondary-600">{{ tickets_abiertos }}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4 border-l-4 border-green-500">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full bg-green-200 bg-opacity-20 mr-4">
+          <i class="fas fa-check-circle text-xl text-green-500"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-secondary-500">Tickets Resueltos</p>
+          <p class="text-2xl font-bold text-secondary-600">{{ tickets_resueltos }}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4 border-l-4 border-pink-500">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full bg-pink-200 bg-opacity-20 mr-4">
+          <i class="fas fa-times-circle text-xl text-pink-500"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-secondary-500">Tickets Cerrados</p>
+          <p class="text-2xl font-bold text-secondary-600">{{ tickets_cerrados }}</p>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+      <div class="flex items-center">
+        <div class="p-3 rounded-full bg-yellow-200 bg-opacity-20 mr-4">
+          <i class="fas fa-redo-alt text-xl text-yellow-500"></i>
+        </div>
+        <div>
+          <p class="text-sm font-medium text-secondary-500">Tickets Reabiertos</p>
+          <p class="text-2xl font-bold text-secondary-600">{{ tickets_reabiertos }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if not es_administrador %}
+  <!-- Tarjeta resumen de rendimiento para agentes -->
+  <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+    <h3 class="text-lg font-semibold mb-4 text-secondary-600">Mi Rendimiento</h3>
+    
+    {% if agentes_rendimiento %}
+      {% with mi_rendimiento=agentes_rendimiento.0 %}
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Métricas principales -->
+        <div class="bg-dark-secondary rounded-lg p-6">
+          <div class="flex flex-col items-center text-center">
+            <div class="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white mb-4 text-xl font-bold">
+              {{ mi_rendimiento.username|first|upper }}
+            </div>
+            <h4 class="text-xl font-semibold text-secondary-500">{{ mi_rendimiento.username }}</h4>
+            <p class="text-sm text-secondary-400 mt-1">Agente de Soporte</p>
+            
+            <div class="mt-6 w-full">
+              <div class="flex justify-between text-sm mb-2">
+                <span class="text-secondary-400">Eficiencia</span>
+                <span class="text-secondary-500">{{ mi_rendimiento.eficiencia }}%</span>
+              </div>
+              <div class="w-full bg-dark-tertiary rounded-full h-2.5">
+                <div class="bg-blue-500 h-2.5 rounded-full" style="width: {{ mi_rendimiento.eficiencia }}%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Estadísticas -->
+        <div class="md:col-span-2">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-dark-secondary p-4 rounded-lg">
+              <div class="flex flex-col items-center">
+                <div class="p-3 rounded-full bg-green-200 bg-opacity-20 mb-3">
+                  <i class="fas fa-check-circle text-xl text-green-500"></i>
+                </div>
+                <span class="text-3xl font-bold text-secondary-600">{{ mi_rendimiento.tickets_resueltos }}</span>
+                <span class="text-sm text-secondary-400">Tickets Resueltos</span>
+              </div>
+            </div>
+            
+            <div class="bg-dark-secondary p-4 rounded-lg">
+              <div class="flex flex-col items-center">
+                <div class="p-3 rounded-full bg-blue-200 bg-opacity-20 mb-3">
+                  <i class="fas fa-clock text-xl text-blue-500"></i>
+                </div>
+                <span class="text-3xl font-bold text-secondary-600">{{ mi_rendimiento.tiempo_medio }}</span>
+                <span class="text-sm text-secondary-400">Tiempo Medio (h)</span>
+              </div>
+            </div>
+            
+            <div class="bg-dark-secondary p-4 rounded-lg">
+              <div class="flex flex-col items-center">
+                <div class="p-3 rounded-full bg-yellow-200 bg-opacity-20 mb-3">
+                  <i class="fas fa-star text-xl text-yellow-500"></i>
+                </div>
+                <span class="text-3xl font-bold text-secondary-600">{{ mi_rendimiento.satisfaccion }}/5</span>
+                <span class="text-sm text-secondary-400">Satisfacción</span>
+              </div>
+            </div>
+            
+            <div class="bg-dark-secondary p-4 rounded-lg">
+              <div class="flex flex-col items-center">
+                <div class="p-3 rounded-full bg-primary-200 bg-opacity-20 mb-3">
+                  <i class="fas fa-ticket-alt text-xl text-primary-500"></i>
+                </div>
+                <span class="text-3xl font-bold text-secondary-600">{{ mi_rendimiento.tickets_pendientes }}</span>
+                <span class="text-sm text-secondary-400">Pendientes</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endwith %}
+    {% else %}
+      <div class="text-center py-8">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-200 bg-opacity-20 text-blue-500 mb-4">
+          <i class="fas fa-user-headset text-2xl"></i>
+        </div>
+        <p class="text-secondary-500">No hay datos de rendimiento disponibles</p>
+        <p class="text-sm text-secondary-400 mt-1">Aún no tienes tickets resueltos</p>
+      </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Gráficos -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Gráfico de tickets por categoría -->
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+      <h3 class="text-lg font-semibold mb-4 text-secondary-600">
+        {% if es_administrador %}
+        Tickets Activos por Categoría
+        {% else %}
+        Mis Tickets por Categoría
+        {% endif %}
+      </h3>
+      <div class="h-64">
+        <canvas id="grafico-categorias"></canvas>
+      </div>
+    </div>
+    
+    <!-- Gráfico de tickets por estado -->
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+      <h3 class="text-lg font-semibold mb-4 text-secondary-600">
+        {% if es_administrador %}
+        Distribución por Estado
+        {% else %}
+        Mis Tickets por Estado
+        {% endif %}
+      </h3>
+      <div class="h-64">
+        <canvas id="grafico-estados"></canvas>
+      </div>
+    </div>
+    
+    <!-- Gráfico de tickets por prioridad -->
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+      <h3 class="text-lg font-semibold mb-4 text-secondary-600">
+        {% if es_administrador %}
+        Distribución por Prioridad
+        {% else %}
+        Mis Tickets por Prioridad
+        {% endif %}
+      </h3>
+      <div class="h-64">
+        <canvas id="grafico-prioridad"></canvas>
+      </div>
+    </div>
+    
+    <!-- Panel de rendimiento de agentes (gráfico horizontal) - Solo para administradores -->
+    {% if es_administrador %}
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+      <h3 class="text-lg font-semibold mb-4 text-secondary-600">Rendimiento por Agente</h3>
+      <div class="h-64">
+        <canvas id="grafico-agentes"></canvas>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  
+  <!-- Panel detallado de rendimiento de agentes - Solo visible para administradores -->
+  {% if es_administrador %}
+  <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+    <h3 class="text-lg font-semibold mb-4 text-secondary-600">Rendimiento Detallado de Agentes</h3>
+    
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <!-- Métricas de agentes -->
+      <div class="space-y-4">
+        {% if agentes_rendimiento %}
+          {% for agente in agentes_rendimiento %}
+            <div class="bg-dark-secondary rounded-lg p-4">
+              <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center">
+                  <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white mr-3 text-sm font-bold">
+                    {{ agente.username|first|upper }}
+                  </div>
+                  <div>
+                    <span class="block font-medium text-secondary-500">{{ agente.username }}</span>
+                    <span class="text-xs text-secondary-400">{{ agente.departamento|default:"Soporte Técnico" }}</span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="block text-2xl font-bold text-secondary-600">{{ agente.tickets_resueltos }}</span>
+                  <span class="text-xs text-secondary-400">tickets resueltos</span>
+                </div>
+              </div>
+              
+              <div class="grid grid-cols-3 gap-2 text-center text-xs mb-3">
+                <div class="bg-dark-tertiary rounded p-2">
+                  <span class="block text-secondary-400">Tiempo medio</span>
+                  <span class="font-medium text-secondary-500">{{ agente.tiempo_medio }} h</span>
+                </div>
+                <div class="bg-dark-tertiary rounded p-2">
+                  <span class="block text-secondary-400">Satisfacción</span>
+                  <span class="font-medium text-secondary-500">{{ agente.satisfaccion }}/5</span>
+                </div>
+                <div class="bg-dark-tertiary rounded p-2">
+                  <span class="block text-secondary-400">Pendientes</span>
+                  <span class="font-medium text-secondary-500">{{ agente.tickets_pendientes }}</span>
+                </div>
+              </div>
+              
+              <!-- Barra de progreso basada en la eficiencia o cuota -->
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="text-secondary-400">Eficiencia</span>
+                  <span class="text-secondary-500">{{ agente.eficiencia }}%</span>
+                </div>
+                <div class="w-full bg-dark-tertiary rounded-full h-2">
+                  <div class="bg-blue-500 h-2 rounded-full" style="width: {{ agente.eficiencia }}%"></div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center py-8">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-200 bg-opacity-20 text-blue-500 mb-4">
+              <i class="fas fa-user-headset text-2xl"></i>
+            </div>
+            <p class="text-secondary-500">No hay datos de rendimiento disponibles</p>
+            <p class="text-sm text-secondary-400 mt-1">Aún no hay agentes con tickets resueltos</p>
+          </div>
+        {% endif %}
+      </div>
+      
+      <!-- Estadísticas generales y clasificación -->
+      <div>
+        <div class="bg-dark-secondary rounded-lg p-4 mb-4">
+          <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-3">Resumen de Rendimiento</h4>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <div class="bg-dark-tertiary p-3 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-secondary-400">Tiempo promedio global</p>
+                  <p class="text-lg font-bold text-secondary-500">{{ tiempo_promedio_global }} h</p>
+                </div>
+                <div class="p-2 rounded-full bg-blue-200 bg-opacity-20">
+                  <i class="fas fa-clock text-blue-500"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-dark-tertiary p-3 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-secondary-400">Satisfacción media</p>
+                  <p class="text-lg font-bold text-secondary-500">{{ satisfaccion_media }}/5</p>
+                </div>
+                <div class="p-2 rounded-full bg-yellow-200 bg-opacity-20">
+                  <i class="fas fa-star text-yellow-500"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-dark-tertiary p-3 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-secondary-400">Total resueltos (mes)</p>
+                  <p class="text-lg font-bold text-secondary-500">{{ total_resueltos_mes }}</p>
+                </div>
+                <div class="p-2 rounded-full bg-green-200 bg-opacity-20">
+                  <i class="fas fa-calendar-check text-green-500"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div class="bg-dark-tertiary p-3 rounded-lg">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-xs text-secondary-400">Eficiencia media</p>
+                  <p class="text-lg font-bold text-secondary-500">{{ eficiencia_media }}%</p>
+                </div>
+                <div class="p-2 rounded-full bg-purple-200 bg-opacity-20">
+                  <i class="fas fa-tachometer-alt text-purple-500"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Clasificación de agentes -->
+        <div class="bg-dark-secondary rounded-lg p-4">
+          <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-3">Top Agentes</h4>
+          
+          <div class="space-y-3">
+            {% for agente in top_agentes %}
+              <div class="flex items-center justify-between p-2 {% if forloop.first %}bg-yellow-900 bg-opacity-20 border border-yellow-800{% else %}bg-dark-tertiary{% endif %} rounded-lg">
+                <div class="flex items-center">
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center text-white mr-2 
+                    {% if forloop.counter == 1 %}bg-yellow-500{% elif forloop.counter == 2 %}bg-gray-400{% elif forloop.counter == 3 %}bg-amber-700{% else %}bg-blue-600{% endif %}">
+                    {{ forloop.counter }}
+                  </div>
+                  <span class="font-medium text-secondary-500">{{ agente.username }}</span>
+                </div>
+                <div class="flex items-center">
+                  <span class="mr-2 text-secondary-500">{{ agente.tickets_resueltos }}</span>
+                  <span class="text-xs px-2 py-1 rounded-full 
+                    {% if forloop.first %}bg-yellow-200 bg-opacity-20 text-yellow-500{% else %}bg-blue-200 bg-opacity-20 text-blue-500{% endif %}">
+                    {% if forloop.first %}Top{% else %}+{{ agente.porcentaje_sobre_promedio }}%{% endif %}
+                  </span>
+                </div>
+              </div>
+            {% empty %}
+              <p class="text-center text-secondary-400 py-4">Sin datos suficientes</p>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  
+  <!-- Actividad reciente y tickets recientes -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Tickets recientes -->
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+      <h3 class="text-lg font-semibold mb-4 text-secondary-600">
+        {% if es_administrador %}
+        Tickets Recientes
+        {% else %}
+        Mis Tickets Recientes
+        {% endif %}
+      </h3>
+      {% if tickets_recientes %}
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-dark-secondary">
+          <thead class="bg-dark-secondary bg-opacity-70">
+            <tr>
+              <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Código</th>
+              <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Título</th>
+              <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Estado</th>
+              <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-secondary-500 uppercase tracking-wider">Acción</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-dark-secondary">
+            {% for ticket in tickets_recientes %}
+            <tr class="hover:bg-dark-secondary hover:bg-opacity-50">
+              <td class="px-4 py-2 whitespace-nowrap text-sm font-medium text-secondary-600">{{ ticket.code }}</td>
+              <td class="px-4 py-2 whitespace-nowrap text-sm text-secondary-500">{{ ticket.title }}</td>
+              <td class="px-4 py-2 whitespace-nowrap">
+                <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full
+                {% if ticket.estado == 1 %}bg-primary-200 bg-opacity-20 text-primary-500{% endif %}
+                {% if ticket.estado == 2 %}bg-pink-200 bg-opacity-20 text-pink-500{% endif %}
+                {% if ticket.estado == 3 %}bg-green-200 bg-opacity-20 text-green-500{% endif %}
+                {% if ticket.estado == 4 %}bg-yellow-200 bg-opacity-20 text-yellow-500{% endif %}">
+                  {{ ticket.get_estado_display }}
+                </span>
+              </td>
+              <td class="px-4 py-2 whitespace-nowrap text-sm">
+                <a href="{% url 'helpdesk:ticket_detail' ticket.id %}" class="text-primary-500 hover:text-primary-400">
+                  <i class="fas fa-eye"></i> Ver
+                </a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-secondary-500 text-center">No hay tickets recientes.</p>
+      {% endif %}
+    </div>
+    
+    <!-- Actividad reciente -->
+    <div class="bg-dark-tertiary rounded-lg shadow-md p-4">
+      <h3 class="text-lg font-semibold mb-4 text-secondary-600">
+        {% if es_administrador %}
+        Actividad Reciente
+        {% else %}
+        Mi Actividad Reciente
+        {% endif %}
+      </h3>
+      {% if actividad_reciente %}
+      <div class="space-y-4">
+        {% for actividad in actividad_reciente %}
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <div class="flex items-center justify-center h-8 w-8 rounded-full bg-primary-200 bg-opacity-20 text-primary-500">
+              <i class="fas fa-history"></i>
+            </div>
+          </div>
+          <div class="ml-4">
+            <p class="text-sm text-secondary-500">
+              {{ actividad.descripcion }}
+              <span class="text-xs text-secondary-400">por {{ actividad.usuario.username }}</span>
+            </p>
+            <p class="text-xs text-secondary-400">{{ actividad.created_at|date:"d/m/Y H:i" }}</p>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-secondary-500 text-center">No hay actividad reciente.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %} 
