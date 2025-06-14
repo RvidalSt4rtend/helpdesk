@@ -19,12 +19,12 @@
     
     // Exportar a Excel (simulado - en producción requeriría backend)
     document.getElementById('exportExcel').addEventListener('click', function() {
-      alert('Esta funcionalidad requiere implementación en el backend.');
+      window.location.href = "{% url 'helpdesk:exportar_excel' %}?{{ request.GET.urlencode }}";
     });
     
     // Exportar a PDF (simulado - en producción requeriría backend)
     document.getElementById('exportPDF').addEventListener('click', function() {
-      alert('Esta funcionalidad requiere implementación en el backend.');
+      window.location.href = "{% url 'helpdesk:exportar_pdf' %}?{{ request.GET.urlencode }}";
     });
   });
 </script>
@@ -121,6 +121,10 @@
       <div class="flex justify-between pt-4">
         <button type="submit" class="inline-flex items-center px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-md shadow-sm transition-colors">
           <i class="fas fa-filter mr-2"></i> Aplicar Filtros
+        </button>
+        <button type="button" onclick="window.location.href='{% url 'helpdesk:reports' %}'"
+          class="inline-flex items-center px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md shadow-sm transition-colors ml-2">
+          <i class="fas fa-eraser mr-2"></i> Limpiar Filtros
         </button>
         
         <div class="relative">

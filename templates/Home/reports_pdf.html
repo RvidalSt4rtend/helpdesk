@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Reporte de Tickets</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px;}
+        th, td { border: 1px solid #333; padding: 4px; text-align: left; }
+        th { background: #eee; }
+    </style>
+</head>
+<body>
+    <h2>Reporte de Tickets</h2>
+    <p>Generado por: {{ user.username }}</p>
+    <table>
+        <thead>
+            <tr>
+                <th>Código</th>
+                <th>Título</th>
+                <th>Estado</th>
+                <th>Prioridad</th>
+                <th>Categoría</th>
+                <th>Solicitante</th>
+                <th>Agente</th>
+                <th>Creado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ticket in tickets %}
+            <tr>
+                <td>{{ ticket.code }}</td>
+                <td>{{ ticket.title }}</td>
+                <td>{{ ticket.get_estado_display }}</td>
+                <td>{{ ticket.get_prioridad_display }}</td>
+                <td>{{ ticket.tipo.nombre }}</td>
+                <td>
+                    {% for asignacion in ticket.asignaciones.all %}
+                        {% if forloop.first %}{{ asignacion.solicitante.username }}{% endif %}
+                    {% endfor %}
+                </td>
+                <td>
+                    {% for asignacion in ticket.asignaciones.all %}
+                        {% if forloop.first %}{{ asignacion.agente.username }}{% endif %}
+                    {% endfor %}
+                </td>
+                <td>{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

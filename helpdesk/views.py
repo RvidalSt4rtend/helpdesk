@@ -13,6 +13,10 @@ from users.models import User
 import json
 import random
 from django.core.paginator import Paginator
+import openpyxl
+from django.http import HttpResponse
+from xhtml2pdf import pisa
+from django.template.loader import render_to_string
 
 # Función para verificar permisos según tipo de usuario
 def check_permission(user, action_type, ticket=None):
@@ -808,3 +812,139 @@ def reports_view(request):
         'promedio_tiempo_resolucion': promedio_tiempo_resolucion,
         'es_administrador': request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR
     })
+
+@login_required
+def exportar_excel(request):
+    # Copia la lógica de filtrado de reports_view
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    estado = request.GET.get('estado', '')
+    prioridad = request.GET.get('prioridad', '')
+    categoria = request.GET.get('categoria', '')
+    agente = request.GET.get('agente', '')
+
+    tickets = Ticket.objects.all().select_related('tipo').prefetch_related('asignaciones__agente', 'asignaciones__solicitante')
+
+    if fecha_inicio and fecha_fin:
+        from datetime import datetime
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            tickets = tickets.filter(created_at__range=[fecha_inicio_dt, fecha_fin_dt])
+        except ValueError:
+            pass
+
+    if estado:
+        try:
+            estado_valor = int(estado)
+            tickets = tickets.filter(estado=estado_valor)
+        except ValueError:
+            pass
+
+    if prioridad:
+        try:
+            prioridad_valor = int(prioridad)
+            tickets = tickets.filter(prioridad=prioridad_valor)
+        except ValueError:
+            pass
+
+    if categoria:
+        try:
+            categoria_valor = int(categoria)
+            tickets = tickets.filter(tipo_id=categoria_valor)
+        except ValueError:
+            pass
+
+    if agente and request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR:
+        try:
+            agente_valor = int(agente)
+            tickets = tickets.filter(asignaciones__agente_id=agente_valor)
+        except ValueError:
+            pass
+
+    # Crear workbook y hoja
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Tickets"
+
+    # Escribir encabezados
+    headers = ["Código", "Título", "Estado", "Prioridad", "Categoría", "Solicitante", "Agente", "Creado"]
+    ws.append(headers)
+
+    for ticket in tickets:
+        asignacion = ticket.asignaciones.first()  # Asume solo una asignación principal
+        ws.append([
+            ticket.code,
+            ticket.title,
+            ticket.get_estado_display(),
+            ticket.get_prioridad_display(),
+            ticket.tipo.nombre,
+            asignacion.solicitante.username if asignacion else "",
+            asignacion.agente.username if asignacion else "",
+            ticket.created_at.strftime("%d/%m/%Y %H:%M"),
+        ])
+
+    # Preparar respuesta
+    response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename=ReporteTickets.xlsx'
+    wb.save(response)
+    return response
+
+@login_required
+def exportar_pdf(request):
+    # Copia la lógica de filtrado de reports_view
+    fecha_inicio = request.GET.get('fecha_inicio', '')
+    fecha_fin = request.GET.get('fecha_fin', '')
+    estado = request.GET.get('estado', '')
+    prioridad = request.GET.get('prioridad', '')
+    categoria = request.GET.get('categoria', '')
+    agente = request.GET.get('agente', '')
+
+    tickets = Ticket.objects.all().select_related('tipo').prefetch_related('asignaciones__agente', 'asignaciones__solicitante')
+
+    if fecha_inicio and fecha_fin:
+        from datetime import datetime
+        try:
+            fecha_inicio_dt = datetime.strptime(fecha_inicio, '%Y-%m-%d')
+            fecha_fin_dt = datetime.strptime(fecha_fin, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            tickets = tickets.filter(created_at__range=[fecha_inicio_dt, fecha_fin_dt])
+        except ValueError:
+            pass
+
+    if estado:
+        try:
+            estado_valor = int(estado)
+            tickets = tickets.filter(estado=estado_valor)
+        except ValueError:
+            pass
+
+    if prioridad:
+        try:
+            prioridad_valor = int(prioridad)
+            tickets = tickets.filter(prioridad=prioridad_valor)
+        except ValueError:
+            pass
+
+    if categoria:
+        try:
+            categoria_valor = int(categoria)
+            tickets = tickets.filter(tipo_id=categoria_valor)
+        except ValueError:
+            pass
+
+    if agente and request.user.tipo_usuario == UserTypeOptions.ADMINISTRADOR:
+        try:
+            agente_valor = int(agente)
+            tickets = tickets.filter(asignaciones__agente_id=agente_valor)
+        except ValueError:
+            pass
+
+    # Renderizar HTML para PDF
+    html = render_to_string('Home/reports_pdf.html', {
+        'tickets': tickets,
+        'user': request.user,
+    })
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename=ReporteTickets.pdf'
+    pisa.CreatePDF(html, dest=response)
+    return response
