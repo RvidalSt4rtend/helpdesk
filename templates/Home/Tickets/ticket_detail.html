@@ -322,7 +322,7 @@
 <div id="historialModal" class="fixed inset-0 bg-transparent backdrop-blur-sm hidden flex items-center justify-center z-50">
     <div class="bg-dark-tertiary rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden">
         <div class="bg-gradient-to-r from-purple-600 to-purple-700 bg-opacity-20 px-6 py-4 flex justify-between items-center">
-            <h3 class="text-lg font-semibold text-purple-500">Historial de Cambios</h3>
+            <h3 class="text-lg font-semibold text-white-500">Historial de Cambios</h3>
             <button type="button" class="text-secondary-500 hover:text-secondary-400" onclick="document.getElementById('historialModal').classList.add('hidden')">
                 <i class="fas fa-times"></i>
             </button>
@@ -384,4 +384,17 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Personalizar estilos para crispy forms en modo oscuro SOLO en el formulario de mensajes
+        const textareas = document.querySelectorAll('form textarea');
+        textareas.forEach(textarea => {
+            textarea.classList.add('bg-dark-secondary', 'border-dark-tertiary', 'text-secondary-500');
+            textarea.classList.remove('bg-white', 'border-gray-300');
+        });
+    });
+</script>
 {% endblock %}

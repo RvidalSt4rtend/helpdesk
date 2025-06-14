@@ -14,7 +14,23 @@
         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
             {% if edit %}Actualizar{% else %}Guardar{% endif %}
         </button>
-        <a href="{% url 'helpdesk:ticket_list' %}" class="text-gray-600 hover:text-gray-900 self-center">Cancelar</a>
+        <a href="{% url 'helpdesk:ticket_list' %}" class="text-gray-600 hover:text-white-900 self-center">Cancelar</a>
     </div>
 </form>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Solo para los labels dentro del formulario de ticket */
+form label,
+form .form-label,
+form label.text-gray-700,
+form label.text-gray-700.font-bold,
+form label.text-gray-700.text-sm,
+form label.text-gray-700.font-bold.text-sm,
+form label[for] {
+    color: #fff !important;
+    opacity: 1 !important;
+}
+</style>
 {% endblock %}
