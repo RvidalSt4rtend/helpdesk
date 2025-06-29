@@ -4,32 +4,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Bienvenidos{% endblock %}</title>
+    <title>{% block title %}Helpdesk - Iniciar Sesión{% endblock %}</title>
     {% load static %}
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    {% block extra_css %}
-    
-    {% endblock %}
+    {% block extra_css %}{% endblock %}
+    <style>
+        /* Forzar color blanco en los labels y campos de texto */
+        .login-form label {
+            color: #fff !important;
+        }
+        .login-form input {
+            color: #fff !important;
+            background-color: #23233a !important;
+            border-color: #44446a !important;
+        }
+        .login-form input::placeholder {
+            color: #bbb !important;
+        }
+    </style>
 </head>
-<body class="bg-gray-100">
-    <div class="container mx-auto px-4">
-        <div class="flex justify-center items-center min-h-screen">
-            <div class="w-full max-w-md">
-                <div class="bg-white rounded-lg shadow-md">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-xl font-semibold text-gray-800">Login</h3>
-                    </div>
-                    <div class="p-6">
-                        <form method="POST">
-                            {% csrf_token %}
-                            {{ form | crispy }}
-                            <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md">
-                                Login
-                            </button>
-                        </form>
-                    </div>
+<body class="bg-[#19192b] min-h-screen flex items-center justify-center">
+    <div class="w-full max-w-md">
+        <div class="bg-[#23233a] rounded-2xl shadow-2xl p-8">
+            <div class="flex flex-col items-center mb-6">
+                <!-- Icono de Helpdesk (puedes cambiar el SVG por el logo de tu empresa si tienes uno) -->
+                <div class="bg-[#2d2d4d] p-3 rounded-full mb-2">
+                    <svg class="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M18.364 5.636a9 9 0 11-12.728 0M12 3v9"></path>
+                    </svg>
                 </div>
+                <h2 class="text-2xl font-bold text-indigo-200 mb-1">HelpDesk</h2>
+                <p class="text-gray-400 text-sm">Bienvenido, por favor inicia sesión para continuar</p>
             </div>
+            <form method="POST" class="space-y-5 login-form">
+                {% csrf_token %}
+                {{ form|crispy }}
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-lg transition duration-200">
+                    Iniciar Sesión
+                </button>
+            </form>
+   
+        </div>
+        <div class="text-center mt-4 text-gray-500 text-xs">
+            &copy; {{ now|date:"Y" }} HelpDesk. Todos los derechos reservados.
         </div>
     </div>
     {% block extra_js %}{% endblock %}

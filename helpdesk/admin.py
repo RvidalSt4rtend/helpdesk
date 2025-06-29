@@ -6,8 +6,12 @@ from .models import Ticket, TicketType, Asignacion, InteraccionTicket, TicketHis
 
 @register(TicketType)
 class TicketType(ModelAdmin):
-    list_display=['categoria','nombre','descripcion','sla', 'grupo_soporte']
+    list_display = ['categoria', 'nombre', 'descripcion', 'sla_horas', 'grupo_soporte']
     exclude = ['deleted_at']
+    
+    def sla_horas(self, obj):
+        return f"{obj.sla} horas"
+    sla_horas.short_description = "SLA (horas)"
     
 @register(Ticket)
 class TicketAdmin(ModelAdmin):

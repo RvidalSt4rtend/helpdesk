@@ -17,6 +17,7 @@ import openpyxl
 from django.http import HttpResponse
 from xhtml2pdf import pisa
 from django.template.loader import render_to_string
+import os
 
 # Función para verificar permisos según tipo de usuario
 def check_permission(user, action_type, ticket=None):
@@ -179,6 +180,12 @@ def ticket_create(request):
             ticket.estado = TicketStatusOptions.ABIERTO
             # Guardar el usuario actual para la asignación
             ticket.usuario_actual = request.user
+
+            # --- Cambiar extensión de adjunto a minúsculas ---
+            if ticket.adjunto:
+                ticket.adjunto.name.lower()
+            # -------------------------------------------------
+
             # Guardamos el ticket, esto activará la asignación automática en el save
             ticket.save()
             
@@ -349,9 +356,11 @@ def ticket_update(request, pk):
                 old_value = old_ticket.adjunto.name.split('/')[-1]
             else:
                 old_value = "Sin adjunto"
-                
+            
+            # Cambiar extensión a minúsculas antes de asignar el adjunto
             if ticket.adjunto:
-                new_value = ticket.adjunto.name.split('/')[-1]
+                name=ticket.adjunto.name.lower()
+                new_value = name.split('/')[-1]
             else:
                 new_value = "Sin adjunto"
                 

@@ -4,7 +4,7 @@ from .views import *
 app_name = 'helpdesk'
 
 urlpatterns = [
-    path('', index_view, name='home'),
+    path('dashboard/', dashboard_view, name='home'),
     path('dashboard/', dashboard_view, name='dashboard'),
     path('reportes/', reports_view, name='reports'),
     path('tickets/', ticket_list, name='ticket_list'),

@@ -11,14 +11,27 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
     add_fieldsets = (
         (None, {
             'classes': ('wide',),
-            'fields': ('username','dni_usuario' ,'password1', 'password2', 'email', 'first_name', 'last_name','celular','tipo_usuario'),
+            'fields': (
+                'username', 'dni_usuario', 'password1', 'password2', 'email',
+                'first_name', 'last_name', 'celular', 'tipo_usuario', 'groups'
+            ),
         }),
     )
 
-    # Definir los campos para el formulario de edición de usuarios
-    fieldsets = BaseUserAdmin.fieldsets + (
-        (None, {'fields': ('dni_usuario','celular','tipo_usuario')}),  # Agrega tu campo personalizado aquí
-    )
-    form=UserChangeForm
-    add_form=UserCreationForm
-    change_password_form=AdminOwnPasswordChangeForm
+    form = UserChangeForm
+    add_form = UserCreationForm
+    change_password_form = AdminOwnPasswordChangeForm
+
+    def get_fieldsets(self, request, obj=None):
+        # Obtén los fieldsets originales
+        fieldsets = list(super().get_fieldsets(request, obj))
+        if obj:  # Si estamos editando
+            # Elimina el fieldset de permisos
+            fieldsets = [fs for fs in fieldsets if fs[0] != 'Permissions']
+            # Agrega tus campos personalizados en un nuevo fieldset
+            fieldsets.append(
+                (None, {'fields': (
+                    'dni_usuario', 'celular', 'tipo_usuario', 'groups'
+                )})
+            )
+        return fieldsets

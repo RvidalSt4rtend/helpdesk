@@ -2,6 +2,7 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+from django.urls import reverse_lazy
 load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -43,6 +44,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
+     'django.middleware.locale.LocaleMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -97,7 +99,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'es'
 TIME_ZONE = 'America/Lima'
 USE_I18N = True
 USE_TZ = True
@@ -136,3 +138,8 @@ UNFOLD = {
 CRONJOBS = [
     ('*/10 * * * *', 'django.core.management.call_command', ['check_sla']),  # Cada 10 minutos
 ]
+
+LOGIN_URL = reverse_lazy('login')
+LOGIN_REDIRECT_URL = '/'
+
+LOGOUT_REDIRECT_URL = '/login/'

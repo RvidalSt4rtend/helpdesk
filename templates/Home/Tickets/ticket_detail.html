@@ -195,7 +195,7 @@
                     <div>
                         <h4 class="text-sm font-medium text-secondary-500 uppercase tracking-wider mb-1">Archivo adjunto</h4>
                         {% with ticket.adjunto.url|lower as file_url %}
-                            {% if ".jpg" in file_url or ".jpeg" in file_url or ".png" in file_url or ".gif" in file_url %}
+                            {% if ".jpg" in file_url or ".jpeg" in file_url or ".png" in file_url or ".gif" in file_url or ".pdf" in file_url %}
                                 <div class="relative">
                                     <img src="{{ file_url }}" alt="Adjunto" class="w-full h-auto rounded-md shadow-sm mt-2 hover:opacity-90 transition-opacity">
                                     <a href="{{ file_url }}" target="_blank" class="absolute bottom-2 right-2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70">

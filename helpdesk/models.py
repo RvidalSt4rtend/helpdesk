@@ -11,7 +11,7 @@ class TicketType(TimeStampModel):
     categoria=models.IntegerField(choices=TicketCategoryOptions)
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(max_length=500, blank=True, null=True)
-    sla = models.IntegerField(max_length=2)
+    sla = models.IntegerField("SLA", help_text="El SLA está expresado en horas", max_length=2)
     grupo_soporte = models.ForeignKey(Group, on_delete=models.SET_NULL, related_name='tipos_ticket', null=True, blank=True, verbose_name='Grupo de soporte asignado')
 
     class Meta:

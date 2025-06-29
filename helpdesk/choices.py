@@ -22,11 +22,11 @@ class TicketStatusOptions(models.IntegerChoices):
     REABIERTO = 4, _("Reabierto")
 
 class TicketGradeOptions(models.IntegerChoices):
-    MUY_BUENA = 1, _("Muy Buena")
-    BUENA = 2, _("Buena")
+    MUY_BUENA = 5, _("Muy Buena")
+    BUENA = 4, _("Buena")
     NORMAL = 3, _("Normal")
-    BAJA = 4, _("Baja")
-    MUY_BAJA = 5, _("Muy Baja")
+    BAJA = 2, _("Baja")
+    MUY_BAJA = 1, _("Muy Baja")
 
 class TicketCategoryOptions(models.IntegerChoices):
     HARDWARE = 1, _("Hardware")
