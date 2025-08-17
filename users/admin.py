@@ -1,7 +1,7 @@
 from django.contrib.admin  import register
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from unfold.admin import ModelAdmin
-from unfold.forms import AdminOwnPasswordChangeForm,UserChangeForm,UserCreationForm
+from unfold.forms import AdminPasswordChangeForm, UserChangeForm, UserCreationForm
 from .models import *
 # Register your models here.
 
@@ -20,7 +20,7 @@ class UserAdmin(BaseUserAdmin, ModelAdmin):
 
     form = UserChangeForm
     add_form = UserCreationForm
-    change_password_form = AdminOwnPasswordChangeForm
+    change_password_form = AdminPasswordChangeForm
 
     def get_fieldsets(self, request, obj=None):
         # Obtén los fieldsets originales
